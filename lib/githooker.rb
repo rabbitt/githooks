@@ -16,7 +16,7 @@ module GitHooker
   GEM_PATH = LIB_PATH.parent
 
   SCRIPT_NAME = Pathname.new($0).basename
-  SCRIPT_DIR  = Pathname.new($0).dirname.realdirpath
+  SCRIPT_DIR  = Pathname.new($0).dirname.realpath
   SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
 
   REPO_ROOT   = Pathname.new(%x{git rev-parse --show-toplevel}.strip)
