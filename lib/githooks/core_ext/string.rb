@@ -1,1 +1,1 @@
-require 'githooks/core_ext/string/camelcase'
+require 'githooks/core_ext/string/inflections'

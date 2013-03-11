@@ -1,0 +1,1 @@
+require 'githooks/core_ext/numbers/infinity'
