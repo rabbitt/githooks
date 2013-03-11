@@ -16,7 +16,7 @@ module GitHooks
 
   public
 
-    def diff_index(options = {})
+    		 def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
       cmd = %w(git diff-index -C -M -B)
