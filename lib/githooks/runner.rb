@@ -14,8 +14,8 @@ module GitHooks
 
         section.each_with_index do |action, index|
           printf "  #{index + 1}. #{action.title}\n"
-          printf "    %s %s %s\n", bright_red('-->'), action.errors.join("\n\t    "), bright_red('<--') unless action.errors.empty?
-          printf "    %s %s %s\n", bright_yellow('-->'), action.warnings.join("\n\t    "), bright_yellow('<--') unless action.warnings.empty?
+          printf "    %s %s\n", bright_red('-->'), action.errors.join("\n\t    ")unless action.errors.empty?
+          printf "    %s %s\n", bright_yellow('-->'), action.warnings.join("\n\t    ") unless action.warnings.empty?
           exit 1 if section.exit_on_error and not action.errors.empty?
         end
 
@@ -23,7 +23,7 @@ module GitHooks
       end
 
       success = 1 if ENV['FORCE_ERROR']
-      exit success ? 0 : 1
+      exit(success ? 0 : 1)
     end
   end
 end

@@ -28,9 +28,9 @@ module GitHooks
     def run()
       @actions.each do |action|
         @success &= action.run
-        return @success if not @success and @exit_on_error
+        return false if not @success and @exit_on_error
       end
-      @success
+      return @success
     end
   end
 end

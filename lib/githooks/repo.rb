@@ -16,7 +16,7 @@ module GitHooks
 
   public
 
-    		 def diff_index(options = {})
+    def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
       cmd = %w(git diff-index -C -M -B)
@@ -35,14 +35,9 @@ module GitHooks
       parse_diff_index_data(diff_index(:staged => false, :ref => 'HEAD'))
     end
 
-    def match_staged_files_on(options)
+    def match_files_on(options)
       raise ArgumentError, "options should be a hash" unless options.is_a? Hash
-      match(staged_manifest, options.to_a)
-    end
-
-    def match_unstaged_files_on(options)
-      raise ArgumentError, "options should be a hash" unless options.is_a? Hash
-      match(unstaged_manifest, options.to_a)
+      match(ENV['UNSTAGED'] ? unstaged_manifest : staged_manifest, options.to_a)
     end
 
     # returns the intersection of all file filters

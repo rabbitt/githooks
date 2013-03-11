@@ -27,16 +27,9 @@ module GitHooks
       end
     end
 
-    def on_staged(options = {}, &block)
+    def on(options = {}, &block)
       block = block || options.delete(:call)
-      Repo.match_staged_files_on(options).collect { |file|
-        block.call(file)
-      }.all? # test that they all returned true
-    end
-
-    def on_unstaged(options = {}, &block)
-      block = block || options.delete(:call)
-      Repo.match_unstaged_files_on(options).collect { |file|
+      Repo.match_files_on(options).collect { |file|
         block.call(file)
       }.all? # test that they all returned true
     end
@@ -46,6 +39,7 @@ module GitHooks
       begin
         $stdout, $stderr = warnings, errors
         @success &= instance_eval(&@action)
+        return @success
       ensure
         @errors = errors.tap {|e| e.rewind}.read.split(/\n/)
         @warnings = warnings.tap {|w| w.rewind}.read.split(/\n/)
