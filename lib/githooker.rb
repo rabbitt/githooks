@@ -19,7 +19,7 @@ module GitHooker
   SCRIPT_DIR  = Pathname.new($0).dirname.realdirpath
   SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
 
-  REPO_ROOT   = Pathname.new(%x{git rev-parse --show-toplevel})
+  REPO_ROOT   = Pathname.new(%x{git rev-parse --show-toplevel}.strip)
 
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 
