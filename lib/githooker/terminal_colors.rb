@@ -32,7 +32,7 @@ module GitHooker
         %w(black red green yellow blue magenta purple cyan white).each do |color|
           name = "#{style}_#{shade}_#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
           const_set(name.upcase, color(name))
-          define_method(name) { |text=''| "#{self.color(name)}#{text}#{self.color(:normal)}" }
+          define_method(name) { |*args| text = args.first || ''; "#{self.color(name)}#{text}#{text.empty? ? self.color(:normal) : ''}" }
         end
       end
     end

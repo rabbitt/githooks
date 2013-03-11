@@ -10,7 +10,7 @@ module GitHooker
   autoload :Section,           'githooker/section'
   autoload :Action,            'githooker/action'
   autoload :TerminalColors,    'githooker/terminal_colors'
-  autoload :RegistrationError, 'githooker/action'
+  autoload :RegistrationError, 'githooker/hook'
 
   LIB_PATH = Pathname.new(__FILE__).dirname
   GEM_PATH = LIB_PATH.parent

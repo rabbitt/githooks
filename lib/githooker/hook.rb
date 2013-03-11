@@ -7,7 +7,7 @@ module GitHooker
 
     def self.method_missing(*args, &block)
       return super unless self.instance.respond_to? args.first
-      self.instance.public_send(*args, &block)
+      self.instance.send(*args, &block)
     end
 
     def run
