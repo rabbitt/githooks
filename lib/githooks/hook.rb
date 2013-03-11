@@ -10,30 +10,28 @@ module GitHooks
       self.instance.public_send(*args, &block)
     end
 
-    def run_for(hook_name)
-      @hooks[hook_name].all? { |hook| hook.run }
+    def run
+      @hooks.all? { |hook| hook.run }
     end
 
     def initialize
-      @hooks   = {}
-      @hook    = nil
+      @hooks   = []
       @section = nil
     end
 
-    def register(hook, &block)
+    def register(&block)
       raise ArgumentError, "Missing required block to #register" unless block_given?
-      @hooks[@hook = hook] ||= []
       instance_eval(&block)
       self
     end
 
     def section(name)
-      @hooks[@hook] << (@section = Section.new(name))
+      @hooks << (@section = Section.new(name))
       self
     end
 
     def sections
-      @hooks[@hook]
+      @hooks
     end
 
     def exit_on_error(value)

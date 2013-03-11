@@ -39,6 +39,10 @@ module GitHooks
       %x{ git stash pop -q }
     end
 
+    def use_unstaged?
+      ENV['UNSTAGED']
+    end
+
     def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
@@ -60,7 +64,7 @@ module GitHooks
 
     def match_files_on(options)
       raise ArgumentError, "options should be a hash" unless options.is_a? Hash
-      match(ENV['UNSTAGED'] ? unstaged_manifest : staged_manifest, options.to_a)
+      match(use_unstaged? ? unstaged_manifest : staged_manifest, options.to_a)
     end
 
     # returns the intersection of all file filters

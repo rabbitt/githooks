@@ -6,7 +6,7 @@ module GitHooks
     def start
       max_section_length = Hook.sections.max {|s| s.name.length }
 
-      success = Hook.run_for(HOOK_NAME)
+      success = Hook.run
 
       Hook.sections.each do |section|
         hash_tail_length = (max_section_length - section.name.length)
@@ -14,8 +14,15 @@ module GitHooks
 
         section.each_with_index do |action, index|
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.title
-          printf "    %s %s\n", bright_red('-->'), action.errors.join("\n\t    ")unless action.errors.empty?
-          printf "    %s %s\n", bright_yellow('-->'), action.warnings.join("\n\t    ") unless action.warnings.empty?
+
+          action.errors.each do |error|
+            printf "    %s %s\n", bright_red('-->'), error
+          end unless action.errors.empty?
+
+          action.warnings.each do |warning|
+            printf "    %s %s\n", ( action.success? ? bright_green('-->') : bright_yellow('-->') ), warning
+          end unless action.warnings.empty?
+
           exit 1 if section.exit_on_error and not action.errors.empty?
         end
 
