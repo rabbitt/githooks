@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'stringio'
 
 module GitHooks
@@ -18,12 +19,22 @@ module GitHooks
     end
 
     def title()
-      if not @errors.empty?
+      if not @errors.empty? or not @success
         bright_red @title
       elsif not @warnings.empty?
         bright_yellow @title
       else
         bright_green @title
+      end
+    end
+
+    def state_symbol
+      if not @errors.empty? or not @success
+        bright_red "X"
+      elsif not @warnings.empty?
+        bright_yellow "✓"
+      else
+        bright_green "✓"
       end
     end
 

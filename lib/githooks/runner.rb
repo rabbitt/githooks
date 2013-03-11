@@ -13,7 +13,7 @@ module GitHooks
         printf "===== %s %s=====\n", section.name, ("=" * hash_tail_length)
 
         section.each_with_index do |action, index|
-          printf "  #{index + 1}. #{action.title}\n"
+          printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.title
           printf "    %s %s\n", bright_red('-->'), action.errors.join("\n\t    ")unless action.errors.empty?
           printf "    %s %s\n", bright_yellow('-->'), action.warnings.join("\n\t    ") unless action.warnings.empty?
           exit 1 if section.exit_on_error and not action.errors.empty?
