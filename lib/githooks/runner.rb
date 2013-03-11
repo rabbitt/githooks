@@ -1,24 +1,29 @@
 module GitHooks
-  class Runner
-    include TerminalColors
+  module Runner
+    extend TerminalColors
+    extend self
 
-    def run(argv)
+    def start
       max_section_length = Hook.sections.max {|s| s.name.length }
 
-      Hook.run_all
+      success = Hook.run_for(HOOK_NAME)
 
-      Hook.sections.each do |name, section|
-        hash_tail_length = (max_section_length - name.length)
-        printf "===== %s %s=====\n", name, (hash_tail_length * "=")
+      Hook.sections.each do |section|
+        hash_tail_length = (max_section_length - section.name.length)
+        printf "===== %s %s=====\n", section.name, ("=" * hash_tail_length)
 
-        section.actions.each_with_index do |action, index|
-          printf "\t #{index + 1}. #{action.title}"
-          printf "\t    %s", action.errors.join("\n\t    ") unless action.errors.empty?
+        section.each_with_index do |action, index|
+          printf "  #{index + 1}. #{action.title}\n"
+          printf "    %s %s %s\n", bright_red('-->'), action.errors.join("\n\t    "), bright_red('<--') unless action.errors.empty?
+          printf "    %s %s %s\n", bright_yellow('-->'), action.warnings.join("\n\t    "), bright_yellow('<--') unless action.warnings.empty?
           exit 1 if section.exit_on_error and not action.errors.empty?
         end
+
+        puts
       end
 
-      Hook.exit
+      success = 1 if ENV['FORCE_ERROR']
+      exit success ? 0 : 1
     end
   end
 end

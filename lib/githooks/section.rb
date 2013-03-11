@@ -4,18 +4,18 @@ module GitHooks
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_reader :name, :status, :actions
+    attr_reader :name, :status
     attr_accessor :exit_on_error
 
+    attr_reader :actions
+    alias :__getobj__ :actions
+
     def initialize(name)
-      @name          = name
-      @state         = :prerun
+      @name          = name.to_s.titleize
       @success       = true
       @exit_on_error = false
       @actions       = []
     end
-
-    def __getobj__() @actions; end
 
     def name()
       unless @success
@@ -26,11 +26,11 @@ module GitHooks
     end
 
     def run()
-      @state = :running
       @actions.each do |action|
         @success &= action.run
         return @success if not @success and @exit_on_error
       end
+      @success
     end
   end
 end

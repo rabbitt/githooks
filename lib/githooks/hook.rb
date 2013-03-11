@@ -5,20 +5,35 @@ module GitHooks
   class Hook
     include Singleton
 
-    def initialize
-      @hooks     = {}
-      @hook_name = nil
-      @section   = nil
+    def self.method_missing(*args, &block)
+      return super unless self.instance.respond_to? args.first
+      self.instance.public_send(*args, &block)
     end
 
-    def register(hook_name, &block)
+    def run_for(hook_name)
+      @hooks[hook_name].all? { |hook| hook.run }
+    end
+
+    def initialize
+      @hooks   = {}
+      @hook    = nil
+      @section = nil
+    end
+
+    def register(hook, &block)
       raise ArgumentError, "Missing required block to #register" unless block_given?
-      @hooks[@hook_name = hook_name] ||= []
+      @hooks[@hook = hook] ||= []
       instance_eval(&block)
+      self
     end
 
     def section(name)
-      @hooks[@hook_name] << (@section = Section.new(name))
+      @hooks[@hook] << (@section = Section.new(name))
+      self
+    end
+
+    def sections
+      @hooks[@hook]
     end
 
     def exit_on_error(value)
@@ -29,6 +44,7 @@ module GitHooks
     def perform(title, &block)
       raise RegistrationError, "#perform called before section defined" unless @section
       raise ArgumentError, "Missing required block to #perform" unless block_given?
-      @section << Action.new(title, block)
+      @section << Action.new(title, &block)
+    end
   end
 end

@@ -1,3 +1,5 @@
+require 'ostruct'
+
 module GitHooks
   module Repo
     extend self
@@ -25,43 +27,54 @@ module GitHooks
     end
 
     def staged_manifest
-      @staged_manifest ||= parse_diff_index_data(diff_index(:staged => true, :ref => 'HEAD'))
+      parse_diff_index_data(diff_index(:staged => true, :ref => 'HEAD'))
     end
     alias :commit_manifest :staged_manifest
 
     def unstaged_manifest
-      @unstaged_manifest ||= parse_diff_index_data(diff_index(:staged => false, :ref => 'HEAD'))
+      parse_diff_index_data(diff_index(:staged => false, :ref => 'HEAD'))
     end
 
-    def match_files_on(type = :and, options)
+    def match_staged_files_on(options)
       raise ArgumentError, "options should be a hash" unless options.is_a? Hash
-      raise ArgumentError, "Match Filter has invalid selection operator '#{type}' (should be: :or, :and, or :not)" unless [:and, :or, :not].include? type
-      (@filters||=[]) << [type, options.to_a]
+      match(staged_manifest, options.to_a)
     end
 
-    def match(check_files)
-      @filters.inject([])  {|matches, filter|
-        case filter.first
-          when :not then @files.reject { |f| @match.all? {|match| match_file(f, *filter[1..-1]) } }
-          when :and then @files.select { |f| @match.all? {|match| match_file(f, *filter[1..-1]) } }
-          when :or then @files.select { |f| @match.any? {|match| match_file(f, *filter[1..-1]) } }
-          else raise ArgumentError, "Match Filter missing required selection operator (:or, :and, or :not)"
-        end
-      }
+    def match_unstaged_files_on(options)
+      raise ArgumentError, "options should be a hash" unless options.is_a? Hash
+      match(unstaged_manifest, options.to_a)
+    end
+
+    # returns the intersection of all file filters
+    def match(manifest_files, filters)
+      manifest_files.tap { |files|
+        filters.each {|type, value| files.select! { |name, data| match_file(data, type, value) } }
+      }.values
     end
 
     def match_file(file, matchtype, matchvalue)
+      attr_value = case matchtype
+        when :name then file.path
+        when :type then file.type
+        when :mode then file.to.mode
+        when :sha then file.to.sha
+        when :score then file.score
+        else raise ArgumentError, "Invalid match type '#{matchtype}' - expected one of: :name, :type, :mode, :sha, or :score"
+      end
+
+      return matchvalue.call(attr_value) if matchvalue.respond_to? :call
+
       case matchtype
         when :name then
-          matchvalue.is_a?(Regexp) ? file[:path] =~ matchvalue : file[:path] == matchvalue
+          matchvalue.is_a?(Regexp) ? attr_value =~ matchvalue : attr_value == matchvalue
         when :type then
-          matchvalue.is_a?(Array) ? matchvalue.include?(file[:type]) : matchvalue == file[:type]
+          matchvalue.is_a?(Array) ? matchvalue.include?(attr_value) : matchvalue == attr_value
         when :mode then
-          matchvalue & file[:to][:mode] == matchvalue
+          matchvalue & attr_value == matchvalue
         when :sha then
-          file[:to][:mode] == matchvalue
+          attr_value == matchvalue
         when :score then
-          file[:score] == matchvalue
+          attr_value == matchvalue
       end
     end
 
@@ -76,13 +89,13 @@ module GitHooks
         change_type, score = change_type.split(/(\d+)/)
         path = rename_path || file_path
 
-        files[path] = {
-          :from  => { :mode => orig_mode, :sha => orig_sha, :path => file_path },
-          :to    => { :mode => new_mode, :sha => new_sha, :path => path },
+        files[path] = OpenStruct.new({
+          :from  => OpenStruct.new({ :mode => orig_mode[1..-1].to_i, :sha => orig_sha, :path => file_path }),
+          :to    => OpenStruct.new({ :mode => new_mode.to_i, :sha => new_sha, :path => path }),
           :type  => CHANGE_TYPES[change_type],
           :score => score.to_i,
           :path  => path
-        }; files
+        }); files
       end
     end
 

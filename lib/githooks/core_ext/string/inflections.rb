@@ -25,6 +25,18 @@ class String
     }
   end
 
+  def titleize!
+    self.tap { |title|
+      title.replace(title.split(/\b/).collect(&:capitalize).join)
+    }
+  end
+  alias :titlize! :titleize!
+
+  def titleize
+    self.dup.titleize!
+  end
+  alias :titlize :titleize
+
   def underscore()
     self.dup.underscore!
   end

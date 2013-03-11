@@ -1,12 +1,17 @@
+require 'stringio'
+
 module GitHooks
   class Action
     include TerminalColors
+    include Repo
 
-    attr_reader :errors
+    attr_reader :errors, :warnings, :title, :success
+
     def initialize(title, &block)
-      @title    = title
+      raise ArgumentError, "Missing required block for Action#new" unless block_given?
+
+      @title    = title.to_s.titleize
       @success  = true
-      @status   = :prerun
       @errors   = []
       @warnings = []
       @action   = block
@@ -22,10 +27,17 @@ module GitHooks
       end
     end
 
-    def on(options = {}, &block)
+    def on_staged(options = {}, &block)
       block = block || options.delete(:call)
-      Repo.match_files_on(options).collect { |file|
-        block.call(file[:path])
+      Repo.match_staged_files_on(options).collect { |file|
+        block.call(file)
+      }.all? # test that they all returned true
+    end
+
+    def on_unstaged(options = {}, &block)
+      block = block || options.delete(:call)
+      Repo.match_unstaged_files_on(options).collect { |file|
+        block.call(file)
       }.all? # test that they all returned true
     end
 
@@ -33,7 +45,7 @@ module GitHooks
       warnings, errors = StringIO.new, StringIO.new
       begin
         $stdout, $stderr = warnings, errors
-        instance_eval(&@action)
+        @success &= instance_eval(&@action)
       ensure
         @errors = errors.tap {|e| e.rewind}.read.split(/\n/)
         @warnings = warnings.tap {|w| w.rewind}.read.split(/\n/)
