@@ -16,6 +16,29 @@ module GitHooks
 
   public
 
+    def while_stashed
+      raise ArgumentError, "Missing required block" unless block_given?
+      begin
+        stash
+        return yield
+      ensure
+        unstash
+      end
+    end
+
+    def run_while_stashed(cmd)
+      while_stashed { system(cmd) }
+      $? == 0
+    end
+
+    def stash()
+      %x{ git stash -q --keep-index }
+    end
+
+    def unstash()
+      %x{ git stash pop -q }
+    end
+
     def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 

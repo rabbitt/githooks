@@ -19,6 +19,8 @@ module GitHooks
   SCRIPT_DIR  = Pathname.new($0).dirname.realdirpath
   SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
 
+  REPO_ROOT   = Pathname.new(SCRIPT_DIR.to_s.gsub(%r{/?.git/.+}, ''))
+
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 
   VERSION = IO.read(GEM_PATH + 'VERSION')
