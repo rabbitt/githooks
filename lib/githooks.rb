@@ -19,14 +19,15 @@ module GitHooks
   SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
 
   VERSION = IO.read(GEM_PATH + 'VERSION')
-
 end
 
 # # --- commit_hooks.rb
 # require 'githooks'
 
 # GitHooks::Hook.register(:pre_commit) do
+#
 #   section :generic
+#   exit_on_error true
 #
 #   perform "Valid Puppet Syntax" do
 #     on :name => /\.pp$/, :call => Puppet.method(:parser_test)
@@ -35,7 +36,7 @@ end
 #   section :policy
 #
 #   perform "No Leading Tabs" do
-#     on :type => [:added, :modified] { |file_path|
+#     on :change => [:added, :modified] { |file_path|
 #       IO.read(file_path).split(/\n/).tap { |contents|
 #         contents.each_with_index do |line, index|
 #           if line.match(/^[ ]*\t/)
@@ -47,7 +48,7 @@ end
 #   end
 #
 #   perform "Leading Spaces Multiple of 2" do
-#     on :type => [:added, :modified] { |file_path|
+#     on :change => [:added, :modified] { |file_path|
 #       IO.read(file_path).split(/\n/).tap { |contents|
 #         contents.each_with_index do |line, index|
 #           if line.scan(/^[ ]+/).first.to_s.size % 2 > 0

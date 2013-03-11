@@ -1,38 +1,24 @@
 module GitHooks
   class Runner
+    include TerminalColors
+
     def run(argv)
-      success = true
       max_section_length = Hook.sections.max {|s| s.name.length }
+
+      Hook.run_all
 
       Hook.sections.each do |name, section|
         hash_tail_length = (max_section_length - name.length)
         printf "===== %s %s=====\n", name, (hash_tail_length * "=")
 
         section.actions.each_with_index do |action, index|
-
-          printf "\t #{index + 1}. #{}"
-      check_files = Hash[changed_files.select{ |file,changetypes|
-        file =~ check[:match][:names] && (changetypes - check[:match][:changes]).empty?
-      }].keys.sort
-
-      max_length = check_files.inject(0) { |size,filename| size = filename.size > size ? filename.size : size }
-
-      check_files.each do |file|
-        printf "   ---- %-#{max_length}s\t", file
-        results = %x{ #{check[:command]} "#{file}" }
-        successful &= $?.success?
-        puts($?.success? ? STATUS_PASSED : STATUS_FAILED)
-        puts results unless results =~ /^\s*$/
+          printf "\t #{index + 1}. #{action.title}"
+          printf "\t    %s", action.errors.join("\n\t    ") unless action.errors.empty?
+          exit 1 if section.exit_on_error and not action.errors.empty?
+        end
       end
 
-      puts
-
-      exit( STATUS_PASSED : STATUS_FAILED)
+      Hook.exit
     end
   end
 end
-
-(19) == 19
-(19) - (16) == 3
-===== abcdefghijklmnop ======== 7 1 16 1 7
-===== abcdefghijklmnopqrs ===== 5 1 19 1 5

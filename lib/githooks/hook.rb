@@ -1,51 +1,34 @@
-require 'delegate'
+require 'singleton'
 
 module GitHooks
-  class Hook < DelegatorClass(Hook::Base)
+  class RegistrationError < StandardError; end
+  class Hook
+    include Singleton
 
-    def initialize(type)
-      @hook = type.camelize.constantize.new(*ARGV)
+    def initialize
+      @hooks     = {}
+      @hook_name = nil
+      @section   = nil
     end
 
-    def __getobj__() @hook; end
-
-
-    def match_files_on(type = :and, options)
-      raise ArgumentError, "options should be a hash" unless options.is_a? Hash
-      raise ArgumentError, "Match Filter has invalid selection operator '#{type}' (should be: :or, :and, or :not)" unless [:and, :or, :not].include? type
-      (@filters||=[]) << [type, options.to_a]
+    def register(hook_name, &block)
+      raise ArgumentError, "Missing required block to #register" unless block_given?
+      @hooks[@hook_name = hook_name] ||= []
+      instance_eval(&block)
     end
 
-    def match(check_files)
-      @filters.inject([])  {|matches, filter|
-        case filter.first
-          when :not then @files.reject { |f| @match.all? {|match| match_file(f, *filter[1..-1]) } }
-          when :and then @files.select { |f| @match.all? {|match| match_file(f, *filter[1..-1]) } }
-          when :or then @files.select { |f| @match.any? {|match| match_file(f, *filter[1..-1]) } }
-          else raise ArgumentError, "Match Filter missing required selection operator (:or, :and, or :not)"
-        end
-      }
+    def section(name)
+      @hooks[@hook_name] << (@section = Section.new(name))
     end
 
-    def match_file(file, matchtype, matchvalue)
-      case matchtype
-        when :name then
-          matchvalue.is_a?(Regexp) ? file[:path] =~ matchvalue : file[:path] == matchvalue
-        when :type then
-          matchvalue.is_a?(Array) ? matchvalue.include?(file[:type]) : matchvalue == file[:type]
-        when :mode then
-          matchvalue & file[:to][:mode] == matchvalue
-        when :sha then
-          file[:to][:mode] == matchvalue
-        when :score then
-          file[:score] == matchvalue
-      end
+    def exit_on_error(value)
+      raise RegistrationError, "#exit_on_error called before section defined" unless @section
+      @section.exit_on_error = value
     end
 
-    class << self
-      def register(hook, &block)
-      end
-    end
-
+    def perform(title, &block)
+      raise RegistrationError, "#perform called before section defined" unless @section
+      raise ArgumentError, "Missing required block to #perform" unless block_given?
+      @section << Action.new(title, block)
   end
 end

@@ -2,6 +2,8 @@
 
 require 'rubygems'
 require 'bundler'
+require 'pathname'
+
 begin
   Bundler.setup(:default, :development)
 rescue Bundler::BundlerError => e
@@ -33,10 +35,19 @@ Rake::TestTask.new(:test) do |test|
 end
 
 require 'simplecov'
+
 require 'cucumber/rake/task'
 Cucumber::Rake::Task.new(:features)
 
 task :default => :test
+
+desc "Run RSpec with code coverage"
+task :coverage do
+  SimpleCov.start do
+    root(Pathname.new(__FILE__).realpath.dirname)
+  end
+  system("open coverage/index.html")
+end
 
 require 'yard'
 YARD::Rake::YardocTask.new
