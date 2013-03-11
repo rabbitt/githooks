@@ -1,6 +1,6 @@
 require 'singleton'
 
-module GitHooks
+module GitHooker
   class RegistrationError < StandardError; end
   class Hook
     include Singleton

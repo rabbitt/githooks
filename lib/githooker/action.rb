@@ -2,7 +2,7 @@
 require 'stringio'
 require 'open3'
 
-module GitHooks
+module GitHooker
   class Action
     include TerminalColors
     include Repo

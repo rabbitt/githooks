@@ -1,4 +1,4 @@
-module GitHooks
+module GitHooker
   module TerminalColors
     extend self
 
@@ -40,6 +40,6 @@ module GitHooks
 end
 
 if $0 == __FILE__
-  include GitHooks::TerminalColors
+  include GitHooker::TerminalColors
   puts send(ARGV.shift, ARGV.join(" ")) unless ARGV.empty?
 end

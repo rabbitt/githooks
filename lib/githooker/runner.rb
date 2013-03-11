@@ -1,4 +1,4 @@
-module GitHooks
+module GitHooker
   module Runner
     extend TerminalColors
     extend self
@@ -30,6 +30,11 @@ module GitHooks
       end
 
       success = 1 if ENV['FORCE_ERROR']
+
+      if not success
+        $stderr.puts "Commit failed due to errors listed above. Please fix and attempt your commit again."
+      end
+
       exit(success ? 0 : 1)
     end
   end

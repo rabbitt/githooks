@@ -1,6 +1,6 @@
 require 'ostruct'
 
-module GitHooks
+module GitHooker
   module Repo
     extend self
 

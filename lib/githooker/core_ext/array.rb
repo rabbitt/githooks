@@ -1,0 +1,1 @@
+require 'githooker/core_ext/array/min_max'

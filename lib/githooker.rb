@@ -1,16 +1,16 @@
 #!/usr/bin/env ruby
 
 require 'pathname'
-require 'githooks/core_ext'
+require 'githooker/core_ext'
 
-module GitHooks
-  autoload :Hook,              'githooks/hook'
-  autoload :Repo,              'githooks/repo'
-  autoload :Runner,            'githooks/runner'
-  autoload :Section,           'githooks/section'
-  autoload :Action,            'githooks/action'
-  autoload :TerminalColors,    'githooks/terminal_colors'
-  autoload :RegistrationError, 'githooks/action'
+module GitHooker
+  autoload :Hook,              'githooker/hook'
+  autoload :Repo,              'githooker/repo'
+  autoload :Runner,            'githooker/runner'
+  autoload :Section,           'githooker/section'
+  autoload :Action,            'githooker/action'
+  autoload :TerminalColors,    'githooker/terminal_colors'
+  autoload :RegistrationError, 'githooker/action'
 
   LIB_PATH = Pathname.new(__FILE__).dirname
   GEM_PATH = LIB_PATH.parent
@@ -19,7 +19,7 @@ module GitHooks
   SCRIPT_DIR  = Pathname.new($0).dirname.realdirpath
   SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
 
-  REPO_ROOT   = Pathname.new(SCRIPT_DIR.to_s.gsub(%r{/?.git/.+}, ''))
+  REPO_ROOT   = Pathname.new(%x{git rev-parse --show-toplevel})
 
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 
@@ -28,9 +28,9 @@ end
 
 # # # --- commit_hooks.rb
 # #!/usr/bin/env ruby
-# require 'githooks'
+# require 'githooker'
 
-# GitHooks::Hook.register(:pre_commit) do
+# GitHooker::Hook.register(:pre_commit) do
 
 #   section :generic
 #   exit_on_error true

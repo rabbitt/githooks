@@ -16,11 +16,11 @@ require 'rake'
 require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
-  gem.name = "githooks"
-  gem.homepage = "http://github.com/rabbitt/githooks"
-  gem.license = "MIT"
+  gem.name = "githooker"
+  gem.homepage = "http://github.com/rabbitt/githooker"
+  gem.license = "GPLv2"
   gem.summary = %Q{framework for building git hooks tests}
-  gem.description = %Q{GitHooks provides a framework for building test that can be used with git hooks}
+  gem.description = %Q{GitHooker provides a framework for building test that can be used with git hooks}
   gem.email = "rabbitt@gmail.com"
   gem.authors = ["Carl P. Corliss"]
   # dependencies defined in Gemfile

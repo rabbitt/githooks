@@ -1,4 +1,4 @@
-require 'githooks/core_ext/numbers/infinity'
+require 'githooker/core_ext/numbers/infinity'
 
 class Array
   def min(&block)

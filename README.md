@@ -1,4 +1,4 @@
-githooks
+githooker
 ========
 
-GitHooks Gem
+GitHooker Gem

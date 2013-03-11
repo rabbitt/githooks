@@ -1,1 +1,0 @@
-require 'githooks/core_ext/string/inflections'

@@ -1,6 +1,6 @@
 require 'delegate'
 
-module GitHooks
+module GitHooker
   class Section < DelegateClass(Array)
     include TerminalColors
 
