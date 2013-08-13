@@ -10,16 +10,17 @@ module GitHooker
   autoload :Section,           'githooker/section'
   autoload :Action,            'githooker/action'
   autoload :TerminalColors,    'githooker/terminal_colors'
+  autoload :NotAGitRepoError,  'githooker/repo'
   autoload :RegistrationError, 'githooker/hook'
 
   LIB_PATH = Pathname.new(__FILE__).dirname
   GEM_PATH = LIB_PATH.parent
 
-  SCRIPT_NAME = Pathname.new($0).basename
-  SCRIPT_DIR  = Pathname.new($0).dirname.realpath
-  SCRIPT_PATH = SCRIPT_DIR + SCRIPT_NAME
+  SCRIPT_NAME     = Pathname.new($0).basename.to_s
+  SCRIPT_DIR      = Pathname.new($0).dirname.realpath
+  SCRIPT_PATH     = SCRIPT_DIR + SCRIPT_NAME
 
-  REPO_ROOT   = Pathname.new(%x{git rev-parse --show-toplevel}.strip)
+  REPO_ROOT   = (path = Repo::root_path).empty? ? SCRIPT_DIR : Pathname.new(path)
 
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 

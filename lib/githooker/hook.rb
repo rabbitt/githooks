@@ -10,12 +10,8 @@ module GitHooker
       self.instance.send(*args, &block)
     end
 
-    def run
-      @hooks.all? { |hook| hook.run }
-    end
-
     def initialize
-      @hooks   = []
+      @sections   = []
       @section = nil
     end
 
@@ -25,18 +21,24 @@ module GitHooker
       self
     end
 
+    def run
+      @sections.collect { |section| section.run }.all?
+    end
+
+    # DSL methods
+
     def section(name)
-      @hooks << (@section = Section.new(name))
+      @sections << (@section = Section.new(name))
       self
     end
 
     def sections
-      @hooks
+      @sections
     end
 
-    def exit_on_error(value)
-      raise RegistrationError, "#exit_on_error called before section defined" unless @section
-      @section.exit_on_error = value
+    def stop_on_error(value)
+      raise RegistrationError, "#stop_on_error called before section defined" unless @section
+      @section.stop_on_error = value
     end
 
     def perform(title, &block)

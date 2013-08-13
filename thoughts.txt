@@ -1,0 +1,78 @@
+
+githook config --global hook.path <path>
+  -- sets hook.path in .gitconfig global
+
+githook config hook.path <path>
+  -- sets hook.path in .git/config local to repository
+
+githook list --hook <hook>
+  -- lists available tests for the given hook(s)
+
+githook assign <scripts> --hook <hook>
+  -- assigns the listed scripts (which must be available in the hook path, and registerd) to the given hooks
+     in the .git/config file under the githooks.<hookname>.tests config path
+
+GitHook::HookGroup::register(name) do
+  hook :pre_commit, :depends_on => { :command => 'puppet'} do
+    perform "Syntax Check" do
+      on :type => [ :modified, :added ], :name => %r{\.pp$} do
+      end
+    end
+  end
+
+[hook.path]
+  /pre_commit
+    puppet.rb
+      Hook.register(pre_commit, "PUPPET") do
+        depends_on :command => 'puppet'
+        subsection 'General'
+        peform "Syntax Check" do
+          on :type => [ :modified, :added ], :name => %r{\.pp$} do
+          end
+        end
+      end
+
+    bind.rb
+      Hook.register(:pre_commit, "BIND") do
+        depends_on :command => 'puppet'
+        subsection 'General'
+        peform "Syntax Check" do
+          on :type => [ :modified, :added ], :name => %r{/modules/bind/files/} do
+          end
+        end
+      end
+
+    ruby.rb
+      Hook.register(:pre_commit, "RUBY") do
+        depends_on :command => 'ruby'
+        subsection 'General'
+        peform "Syntax Check" do
+          on :type => [ :modified, :added ], :name => %r{/modules/bind/files/} do
+          end
+        end
+      end
+
+    php.rb
+      Hook.register(:pre_commit, "PHP") do
+        depends_on :command => 'php'
+        subsection "General"
+        perform "Syntax Check" do
+          on :type => [ :modified, :added ], :name => %r{\.php$} do
+          end
+        end
+      end
+
+    policy.rb
+      Hook.register(commit_msg, "POLICY") do
+        subsection "Standards"
+        perform "Tabs Vs Spaces"
+        perform
+      end
+
+  /commit_msg
+    policy.rb
+      Hook.register(:commit_msg, "POLICY") do
+        subsection "Standards"
+        perform "Commit Message Length"
+        perform "Has ticket reference"
+      end

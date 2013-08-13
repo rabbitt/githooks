@@ -14,7 +14,24 @@ module GitHooker
 
     DEFAULT_DIFF_INDEX_OPTIONS = { :staged => true, :ref => 'HEAD' }
 
+    class NotAGitRepoError < StandardError; end
+
   public
+
+    def root_path
+      %x{git rev-parse --show-toplevel 2>&1}.strip.tap { |path|
+        if $? != 0 && path =~ /Not a git repository/
+          # attempt to find the repo
+          warn "couldn't find a git repository in the current path #{Dir.getwd}"
+          return path unless (path = %x{ cd #{GitHooker::SCRIPT_DIR.to_s}; git rev-parse --show-toplevel 2>&1 }) =~ /Not a git repository/
+          unless GitHooker::SCRIPT_NAME == 'irb'
+            raise NotAGitRepoError, "Unable to find a valid git repository"
+          end
+          warn "GitHooker::REPO_ROOT is not set - Use GitHooker::Repo.root_path once you've changed the current directory to a git repo"
+          return ''
+        end
+      }
+    end
 
     def while_stashed
       raise ArgumentError, "Missing required block" unless block_given?

@@ -5,13 +5,14 @@
 
 Gem::Specification.new do |s|
   s.name = "githooker"
-  s.version = "0.2.2"
+  s.version = "0.2.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Carl P. Corliss"]
-  s.date = "2013-03-11"
+  s.date = "2013-03-12"
   s.description = "GitHooker provides a framework for building test that can be used with git hooks"
   s.email = "rabbitt@gmail.com"
+  s.executables = ["githook"]
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.md",
@@ -25,6 +26,7 @@ Gem::Specification.new do |s|
     "README.rdoc",
     "Rakefile",
     "VERSION",
+    "bin/githook",
     "features/githooker.feature",
     "features/step_definitions/githooker_steps.rb",
     "features/support/env.rb",
@@ -56,7 +58,6 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<inifile>, ["~> 2.0"])
       s.add_development_dependency(%q<awesome_print>, [">= 0"])
       s.add_development_dependency(%q<shoulda>, [">= 0"])
       s.add_development_dependency(%q<yard>, ["~> 0.7"])
@@ -66,7 +67,6 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<jeweler>, ["~> 1.8.4"])
       s.add_development_dependency(%q<simplecov>, [">= 0"])
     else
-      s.add_dependency(%q<inifile>, ["~> 2.0"])
       s.add_dependency(%q<awesome_print>, [">= 0"])
       s.add_dependency(%q<shoulda>, [">= 0"])
       s.add_dependency(%q<yard>, ["~> 0.7"])
@@ -77,7 +77,6 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<simplecov>, [">= 0"])
     end
   else
-    s.add_dependency(%q<inifile>, ["~> 2.0"])
     s.add_dependency(%q<awesome_print>, [">= 0"])
     s.add_dependency(%q<shoulda>, [">= 0"])
     s.add_dependency(%q<yard>, ["~> 0.7"])

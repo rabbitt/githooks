@@ -23,6 +23,8 @@ Jeweler::Tasks.new do |gem|
   gem.description = %Q{GitHooker provides a framework for building test that can be used with git hooks}
   gem.email = "rabbitt@gmail.com"
   gem.authors = ["Carl P. Corliss"]
+  gem.executables = ['githook']
+  gem.files += Dir['bin/*']
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new

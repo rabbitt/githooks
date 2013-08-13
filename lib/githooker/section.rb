@@ -4,33 +4,59 @@ module GitHooker
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_reader :name, :status
-    attr_accessor :exit_on_error
-
+    attr_accessor :stop_on_error
     attr_reader :actions
     alias :__getobj__ :actions
 
     def initialize(name)
       @name          = name.to_s.titleize
       @success       = true
-      @exit_on_error = false
+      @stop_on_error = false
       @actions       = []
+
+      waiting!
+    end
+
+    def stop_on_error?() @stop_on_error; end
+
+    def success?() @success; end
+
+    def finished?() @status == :finished; end
+    def finished!() @status = :finished; end
+
+    def running?() @status == :running; end
+    def running!() @status = :running; end
+
+    def waiting?() @status == :waiting; end
+    def waiting!() @status = :waiting; end
+
+    def completed?
+      @actions.all? { |action| action.finished? }
+    end
+
+    def wait_count()
+      @actions.select { |action| action.waiting? }.size
     end
 
     def name()
-      unless @success
-        bright_red @name
-      else
-        bright_green @name
-      end
+      "#{GitHooker::SCRIPT_NAME.camelize} :: #{@name}"
+    end
+
+    def colored_name()
+      status_colorize name
+    end
+
+    def status_colorize(text)
+      finished? && completed? ? (success? ? bright_green(text) : bright_red(text)) : dark_cyan(text)
     end
 
     def run()
-      @actions.each do |action|
-        @success &= action.run
-        return false if not @success and @exit_on_error
-      end
-      return @success
+      running!
+      if stop_on_error?
+        @actions.all? { |action| @success &= action.run }
+      else
+        @actions.collect { |action| @success &= action.run }.all?
+      end.tap { finished! }
     end
   end
 end
