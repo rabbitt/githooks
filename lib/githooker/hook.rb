@@ -11,8 +11,8 @@ module GitHooker
     end
 
     def initialize
-      @sections   = []
-      @section = nil
+      @sections = []
+      @section  = nil
     end
 
     def register(options = {}, &block)
@@ -23,7 +23,7 @@ module GitHooker
         raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
       end
 
-      instance_eval(&block) unless Repo.match_phase(phase)
+      instance_eval(&block) if Repo.match_phase(phase)
       self
     end
 
