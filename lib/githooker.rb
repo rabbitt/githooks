@@ -3,6 +3,7 @@
 require 'pathname'
 require 'githooker/core_ext'
 
+
 module GitHooker
   autoload :Hook,              'githooker/hook'
   autoload :Repo,              'githooker/repo'
