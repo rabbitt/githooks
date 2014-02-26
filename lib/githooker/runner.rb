@@ -22,11 +22,11 @@ module GitHooker
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
 
           action.errors.each do |error|
-            printf "    %s %s\n", bright_red('-->'), error
+            printf "    %s %s\n", bright_red(MARK_FAILURE), error
           end unless action.errors.empty?
 
           action.warnings.each do |warning|
-            printf "    %s %s\n", ( action.success? ? bright_green(C_MARK) : bright_yellow(Q_MARK)), warning
+            printf "    %s %s\n", ( action.success? ? bright_green(MARK_SUCCESS) : bright_yellow(MARK_UNKNOWN) ), warning
           end unless action.warnings.empty?
         end
         puts

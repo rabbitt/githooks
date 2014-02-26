@@ -49,7 +49,8 @@ module GitHooker
       begin
         running!
         $stdout, $stderr = warnings, errors
-        state = @action.call
+        @success &= @action.call
+        return @success
       ensure
         @errors = errors.tap {|e| e.rewind}.read.split(/\n(?:[\t ]*)/)
         @warnings = warnings.tap {|w| w.rewind}.read.split(/\n(?:[\t ]*)/)
