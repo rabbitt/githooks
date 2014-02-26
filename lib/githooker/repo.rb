@@ -91,6 +91,11 @@ module GitHooker
       }.values
     end
 
+    def match_phase(phase = :any)
+      return true if phase == :any
+      return GitHooker::SCRIPT_NAME.to_sym == phase.to_s.to_sym
+    end
+
     def match_file(file, matchtype, matchvalue)
       attr_value = case matchtype
         when :name then file.path

@@ -5,7 +5,6 @@ module GitHooker
     include TerminalColors
 
     attr_accessor :stop_on_error
-    attr_reader :actions
     alias :__getobj__ :actions
 
     def initialize(name)
@@ -15,6 +14,10 @@ module GitHooker
       @actions       = []
 
       waiting!
+    end
+
+    def actions
+      @actions.collect { |action| Repo.match_phase(action.phase) }
     end
 
     def stop_on_error?() @stop_on_error; end

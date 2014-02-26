@@ -26,6 +26,8 @@ module GitHooker
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 
   VERSION = IO.read(GEM_PATH + 'VERSION')
+
+  VALID_PHASES = %w{ any pre-commit post-commit commit-msg }.collect(&:to_sym).freeze
 end
 
 # # # --- commit_hooks.rb

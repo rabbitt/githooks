@@ -6,13 +6,19 @@ module GitHooker
   class Action
     include TerminalColors
 
-    attr_reader :errors, :warnings, :title, :success
+    attr_reader :errors, :warnings, :title, :success, :phase
 
-    def initialize(title, &block)
+    def initialize(title, phase, &block)
       raise ArgumentError, "Missing required block for Action#new" unless block_given?
+
+      phase = phase.to_s.to_sym
+      unless GitHooker::VALID_PHASES.include? phase
+        raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
+      end
 
       @title    = title.to_s.titleize
       @success  = true
+      @phase    = phase || :any
       @errors   = []
       @warnings = []
       @action   = DSL.new(block)

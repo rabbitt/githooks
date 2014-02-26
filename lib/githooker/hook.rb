@@ -15,9 +15,15 @@ module GitHooker
       @section = nil
     end
 
-    def register(&block)
+    def register(options = {}, &block)
       raise ArgumentError, "Missing required block to #register" unless block_given?
-      instance_eval(&block)
+
+      phase = (options.delete(:phase) || :any).to_s.to_sym
+      unless GitHooker::VALID_PHASES.include? phase
+        raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
+      end
+
+      instance_eval(&block) unless Repo.match_phase(phase)
       self
     end
 
@@ -41,10 +47,10 @@ module GitHooker
       @section.stop_on_error = value
     end
 
-    def perform(title, &block)
+    def perform(title, options = {}, &block)
       raise RegistrationError, "#perform called before section defined" unless @section
       raise ArgumentError, "Missing required block to #perform" unless block_given?
-      @section << Action.new(title, &block)
+      @section << Action.new(title, options.delete(:phase), &block)
     end
   end
 end
