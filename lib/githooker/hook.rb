@@ -18,12 +18,12 @@ module GitHooker
     def register(options = {}, &block)
       raise ArgumentError, "Missing required block to #register" unless block_given?
 
-      phase = (options.delete(:phase) || :any).to_s.to_sym
+      @phase = (options.delete(:phase) || :any).to_s.to_sym
       unless GitHooker::VALID_PHASES.include? phase
         raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
       end
 
-      instance_eval(&block) if Repo.match_phase(phase)
+      instance_eval(&block) if Repo.match_phase(@phase)
       self
     end
 
@@ -50,7 +50,7 @@ module GitHooker
     def perform(title, options = {}, &block)
       raise RegistrationError, "#perform called before section defined" unless @section
       raise ArgumentError, "Missing required block to #perform" unless block_given?
-      @section << Action.new(title, options.delete(:phase), &block)
+      @section << Action.new(title, options.delete(:phase) || @phase, &block)
     end
   end
 end
