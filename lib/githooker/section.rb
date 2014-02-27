@@ -16,9 +16,13 @@ module GitHooker
     end
 
     def actions
-      @actions.collect { |action| Repo.match_phase(action.phase) }
+      @actions.select { |action|
+        Repo.match_phase(action.phase)
+      }
     end
     alias :__getobj__ :actions
+
+    def <<(action) @actions << action; end
 
     def stop_on_error?() @stop_on_error; end
 

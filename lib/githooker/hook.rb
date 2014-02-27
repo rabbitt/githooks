@@ -19,11 +19,13 @@ module GitHooker
       raise ArgumentError, "Missing required block to #register" unless block_given?
 
       @phase = (options.delete(:phase) || :any).to_s.to_sym
-      unless GitHooker::VALID_PHASES.include? phase
+      unless GitHooker::VALID_PHASES.include? @phase
         raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
       end
 
-      instance_eval(&block) if Repo.match_phase(@phase)
+      if Repo.match_phase(@phase)
+        instance_eval(&block)
+      end
       self
     end
 

@@ -8,7 +8,9 @@ module GitHooker
 
       success = Hook.run
 
-      Hook.sections.each do |section|
+      Hook.sections.select {|section|
+        not section.actions.empty?
+      }.each do |section|
         hash_tail_length = (max_section_length - section.name.length)
         printf "===== %s %s=====\n", section.colored_name, ("=" * hash_tail_length)
 
