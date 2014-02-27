@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "githooker"
-  s.version = "0.2.8"
+  s.version = "0.2.9"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Carl P. Corliss"]
-  s.date = "2014-02-26"
+  s.date = "2014-02-27"
   s.description = "GitHooker provides a framework for building test that can be used with git hooks"
   s.email = "rabbitt@gmail.com"
   s.executables = ["githook"]
