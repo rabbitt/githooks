@@ -1,3 +1,5 @@
+require 'githooker/terminal_colors'
+
 module GitHooker
   module Runner
     extend TerminalColors
@@ -24,11 +26,15 @@ module GitHooker
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
 
           action.errors.each do |error|
-            printf "    %s %s\n", bright_red(MARK_FAILURE), error
+            printf "    %s %s\n", bright_red(TerminalColors::MARK_FAILURE), error
           end unless action.errors.empty?
 
           action.warnings.each do |warning|
-            printf "    %s %s\n", ( action.success? ? bright_green(MARK_SUCCESS) : bright_yellow(MARK_UNKNOWN) ), warning
+            printf "    %s %s\n",
+              ( action.success? ?
+                bright_green(TerminalColors::MARK_SUCCESS) :
+                bright_yellow(TerminalColors::MARK_UNKNOWN)
+              ), warning
           end unless action.warnings.empty?
         end
         puts

@@ -77,11 +77,17 @@ module GitHooker
       # DSL Methods
       def args() ARGV.dup; end
 
-      def on(options = {}, &block)
+      def on_each(options = {}, &block)
         block = block || options.delete(:call)
         Repo.match_files_on(options).collect { |file|
           block.call(file)
         }.all? # test that they all returned true
+      end
+      alias :on :on_each
+
+      def on_all(options = {}, &block)
+        block = block || options.delete(:call)
+        block.call(Repo.match_files_on(options))
       end
 
       def execute(cmd, output_line_prefix=nil)
