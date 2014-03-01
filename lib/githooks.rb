@@ -1,3 +1,4 @@
+# encoding: utf-8
 =begin
 Copyright (C) 2013 Carl P. Corliss
 
@@ -39,7 +40,7 @@ module GitHooks
   SCRIPT_DIR      = Pathname.new($0).dirname.realpath
   SCRIPT_PATH     = SCRIPT_DIR + SCRIPT_NAME
 
-  REPO_ROOT   = (path = Repository::root_path).empty? ? SCRIPT_DIR : Pathname.new(path)
+  REPO_ROOT   = (path = Repository.root_path).empty? ? SCRIPT_DIR : Pathname.new(path)
 
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 

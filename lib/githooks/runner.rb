@@ -39,7 +39,6 @@ module GitHooks
         hash_tail_length = (max_section_length - section.name.length)
         printf "===== %s %s=====\n", section.colored_name, ("=" * hash_tail_length)
 
-        shown_incomplete = false
         section.actions.each_with_index do |action, index|
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
 

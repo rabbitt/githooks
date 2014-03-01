@@ -1,3 +1,4 @@
+# encoding: utf-8
 =begin
 Copyright (C) 2013 Carl P. Corliss
 
@@ -17,5 +18,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module GitHooks
-  VERSION = "1.0.0"
+  VERSION = '1.0.0'
 end

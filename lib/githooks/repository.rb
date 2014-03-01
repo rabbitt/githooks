@@ -1,3 +1,4 @@
+# encoding: utf-8
 =begin
 Copyright (C) 2013 Carl P. Corliss
 

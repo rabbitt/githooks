@@ -87,7 +87,8 @@ module GitHooks
     end
 
     def method_missing(method, *args, &block)
-      return super unless command = section.hook.find_command(method)
+      command = section.hook.find_command(method)
+      return super unless command
       run_command(command, *args, &block)
     end
 

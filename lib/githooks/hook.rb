@@ -1,3 +1,4 @@
+# encoding: utf-8
 =begin
 Copyright (C) 2013 Carl P. Corliss
 
@@ -82,7 +83,8 @@ module GitHooks
     end
 
     def method_missing(method, *args, &block)
-      return super unless command = find_command(method)
+      command = find_command(method)
+      return super unless command
       command.call(*args, &block)
     end
 
@@ -139,7 +141,7 @@ module GitHooks
 
         @aliases = options.delete(:aliases) || []
         @aliases << name
-        @aliases.collect!{ |name| normalize(name) }
+        @aliases.collect!{ |_alias| normalize(_alias) }
         @aliases.uniq!
       end
 
@@ -154,9 +156,9 @@ module GitHooks
 
         command = shelljoin([command_path] | args)
 
-        result = OpenStruct.new(output: nil, error: nil, status: nil).tap { |result|
-          result.output, result.error, result.status = Open3.capture3(command)
-          class << result.status
+        result = OpenStruct.new(output: nil, error: nil, status: nil).tap { |r|
+          r.output, r.error, r.status = Open3.capture3(command)
+          class << r.status
             def failed?() !success?; end
           end
         }
