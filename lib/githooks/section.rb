@@ -23,6 +23,7 @@ module GitHooks
     include TerminalColors
 
     attr_accessor :name, :actions, :hook
+    alias :title :name
 
     def initialize(name, hook, &block)
       @name    = name.to_s.titleize
@@ -72,9 +73,9 @@ module GitHooks
     end
 
     def action(title, options = {}, &block)
-      raise RegistrationError, "#perform called before section defined" unless @section
       raise ArgumentError, "Missing required block to #perform" unless block_given?
-      @section << Action.new(title, options.delete(:phase) || @phase, &block)
+      @actions << Action.new(title, self, &block)
+      self
     end
 
     def status_colorize(text)
@@ -83,11 +84,13 @@ module GitHooks
 
     def run()
       running!
-      if stop_on_error?
-        @actions.all? { |action| @success &= action.run }
-      else
-        @actions.collect { |action| @success &= action.run }.all?
-      end.tap { finished! }
+      begin
+        actions.collect { |action|
+          @success &= action.run
+        }.all?
+      ensure
+        finished!
+      end
     end
   end
 end

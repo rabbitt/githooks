@@ -24,16 +24,19 @@ module GitHooks
   class Action
     include TerminalColors
 
-    attr_reader :title, :errors, :warnings
+    attr_reader :title, :section, :on, :limiters, :errors, :warnings
+    private :section, :on, :limiters
 
-    def initialize(title, section, block)
+    def initialize(title, section, &block)
+      raise ArgumentError, "Missing required block" unless block_given?
+
       @title    = title
-      @filters  = []
+      @section  = section
+      @on       = nil
+      @limiters = []
       @success  = true
       @errors   = []
       @warnings = []
-      @on       = nil
-      @section  = section
 
       instance_eval(&block)
 
@@ -41,7 +44,7 @@ module GitHooks
     end
 
     def manifest
-      section.hook.manifest.filter(@filters)
+      @manifest ||= section.hook.manifest.filter(@limiters)
     end
 
     def colored_title()
@@ -73,7 +76,7 @@ module GitHooks
       begin
         running!
         $stdout, $stderr = warnings, errors
-        @success &= @action.call
+        @success &= @on.call
         return @success
       ensure
         @errors = errors.tap {|e| e.rewind}.read.split(/\n(?:[\t ]*)/)
@@ -93,11 +96,13 @@ module GitHooks
     def args() ARGV.dup; end
 
     def limit(what)
-      @filters << Repository::Limiter.new(what, self)
+      Repository::Limiter.new(what).tap { |limiter|
+        @limiters << limiter
+      }
     end
 
     def on_each_file(&block)
-      @on = -> { manifest.collect { |file| block.call(fall) }.all? }
+      @on = -> { manifest.collect { |file| block.call(file) }.all? }
     end
 
     def on_all_files(&block)
@@ -108,7 +113,7 @@ module GitHooks
 
     def run_command(command, *args, &block)
       options = args.extract_options
-      prefix  = options.delete(:prefix)
+      prefix  = options.delete(:prefix_output)
 
       command.call(*args, &block).tap { |res|
         res.output.split(/\n/).each do |line|

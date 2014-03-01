@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
   spec.authors          = ["Carl P. Corliss"]
   spec.email            = ["rabbitt@gmail.com"]
   spec.description      = "GitHooker provides a framework for building tests that can be used with git hooks"
-  spec.homepage         = "http://github.com/rabbitt/githooker"
+  spec.homepage         = "http://github.com/rabbitt/githooks"
   spec.summary          = "framework for building git hooks tests"
   spec.license          = "GPLv2"
   spec.rubygems_version = "2.0.14"

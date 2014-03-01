@@ -23,25 +23,26 @@ module GitHooks
 
   class Hook
 
-    @__instance__ = {}
-    @__mutex__    = Mutex.new
+    @__phases__ = {}
+    @__mutex__  = Mutex.new
 
     class << self
       def instances
-        @__instances__
+        @__phases__
       end
+      alias :phases :instances
 
-      def instance(type = :'pre-commit')
-        unless GitHooks::VALID_PHASES.include? type
-          raise ArgumentError, "Hook phase must be one of #{GitHooks::VALID_PHASES.join(', ')}"
+      def instance(phase = 'pre-commit')
+        phase = phase.to_s.gsub('_', '-').to_sym
+        unless GitHooks::VALID_PHASES.include? phase
+          raise ArgumentError, "Hook phase (#{phase.inspect}) must be one of #{GitHooks::VALID_PHASES.collect(&:inspect).join(', ')}"
         end
 
-        type = type.to_s.gsub('_', '-').to_sym
-        return instances[type] if instances[type]
+        return phases[phase] if phases[phase]
 
         @__mutex__.synchronize {
-          return instances[type] if instances[type]
-          instances[type] = new(type)
+          return phases[phase] if phases[phase]
+          phases[phase] = new(phase)
         }
       end
       private :instance
@@ -60,12 +61,12 @@ module GitHooks
       end
     end
 
-    attr_reader :sections, :type, :repository
+    attr_reader :sections, :phase, :repository
 
-    def initialize(hook_type)
-      @type       = hook_type
+    def initialize(phase)
+      @phase      = phase
       @sections   = []
-      @commands   = {}
+      @commands   = []
       @repository = Repository.new(GitHooks::SCRIPT_PATH)
     end
 
@@ -74,9 +75,10 @@ module GitHooks
     end
 
     def run
-      # only run sections that tests matching files in the manifest
-      @sections.select { |section| section.tests.any? { |test| test.match(manifest) }}
-      @sections.collect { |section| section.run }.all?
+      # only run sections that have actions matching files in the manifest
+      @sections.select { |section|
+        not section.actions.empty?
+      }.collect { |section| section.run }.all?
     end
 
     def method_missing(method, *args, &block)
@@ -87,7 +89,7 @@ module GitHooks
     def setup_command(name, options = {})
       name    = name.to_s.to_sym
 
-      @commands[name.to_sym] = Command.new(
+      @commands << Command.new(
         name,
         path: options.delete(:path),
         aliases: options.delete(:aliases) || options.delete(:alias)
@@ -96,7 +98,7 @@ module GitHooks
     private :setup_command
 
     def find_command(name)
-      @commands.select { |command| command.aliases.include? method }.first
+      @commands.select { |command| command.aliases.include? name.to_s }.first
     end
 
     # DSL methods
@@ -112,6 +114,7 @@ module GitHooks
 
     def section(name, &block)
       @sections << Section.new(name, self, &block)
+      self
     end
 
     class Manifest
@@ -127,7 +130,9 @@ module GitHooks
     end
 
     class Command
-      attr_reader :aliases, :path,
+      include Shellwords
+
+      attr_reader :aliases, :path, :name
       def initialize(name, options = {})
         @name = name
         @path = options.delete(:path) || Utils.which(name)
@@ -138,8 +143,8 @@ module GitHooks
         @aliases.uniq!
       end
 
-      def command
-        name.to_s || path
+      def command_path
+        path || name.to_s
       end
 
       def call(*args, &block)
@@ -147,7 +152,7 @@ module GitHooks
         args.collect!{ |arg| arg.is_a?(Repository::File) ? arg.path.to_s : arg }
         args.collect!(&:to_s)
 
-        command = shelljoin([command] | args)
+        command = shelljoin([command_path] | args)
 
         result = OpenStruct.new(output: nil, error: nil, status: nil).tap { |result|
           result.output, result.error, result.status = Open3.capture3(command)

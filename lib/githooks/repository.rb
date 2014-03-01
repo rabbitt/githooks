@@ -24,16 +24,16 @@ module GitHooks
   class Repository
 
     CHANGE_TYPE_SYMBOLS = {
-      addition:     'A', added:    'A',
-      copy:         'C', copied:   'C',
-      deletion:     'D', deleted:  'D',
-      modification: 'M', modified: 'M',
-      rename:       'R', renamed:  'R',
-      retype:       'T', retyped:  'T',
-      unknown:      'U',
-      unmerge:      'X', unmerged: 'X',
-      broke:        'B', broken:   'B',
-      any:          '*'
+      added:    'A',
+      copied:   'C',
+      deleted:  'D',
+      modified: 'M',
+      renamed:  'R',
+      retyped:  'T',
+      unknown:  'U',
+      unmerged: 'X',
+      broken:   'B',
+      any:      '*'
     }.freeze
 
     CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze
@@ -151,9 +151,10 @@ module GitHooks
     private :parse_diff_index_data
 
     class Limiter
+      attr_reader :type, :action
       def initialize(type, options = {})
-        @type = type
-        @only = options.delete(:only) || options.delete(:to)
+        @type   = type
+        @only   = options.delete(:only) || options.delete(:to)
       end
 
       def only(*args)
@@ -162,6 +163,7 @@ module GitHooks
       alias :to :only
 
       def limit(files)
+        # binding.pry
         files.select! { |file| match_file(file, @only) }
       end
 
@@ -192,21 +194,21 @@ module GitHooks
 
       def attribute_value(attribute)
         case attribute
-          when :name then file.name.to_s
-          when :path then file.path.to_s
-          when :type then file.type
-          when :mode then file.to.mode
-          when :sha then file.to.sha
-          when :score then file.score
+          when :name then name.to_s
+          when :path then path.to_s
+          when :type then type
+          when :mode then to.mode
+          when :sha then to.sha
+          when :score then score
           else raise ArgumentError, "Invalid attribute type '#{attribute}' - expected one of: :name, :path, :type, :mode, :sha, or :score"
         end
       end
 
       def match(type, _match)
-        value = file.attribute_value(type)
+        value = attribute_value(type)
         return _match.call(value) if _match.respond_to? :call
 
-        case @type
+        case type
           when :name  then _match.is_a?(Regexp) ? value =~ _match : value == _match
           when :path  then _match.is_a?(Regexp) ? value =~ _match : value == _match
           when :type  then _match.is_a?(Array) ? _match.include?(value) : _match == value

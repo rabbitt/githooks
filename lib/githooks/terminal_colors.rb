@@ -24,7 +24,7 @@ module GitHooks
 
     def color(name)
       name = name.to_s
-      return '' unless $stdout.tty? && $stderr.tty?
+      # return '' unless $stdout.tty? && $stderr.tty?
       return NORMAL if name.match(/norm/)
 
       light = !!name.to_s.match(/(light|bright)/) ? "1" : "0"

@@ -1,78 +1,40 @@
 
-githook config --global hook.path <path>
-  -- sets hook.path in .gitconfig global
+githook config [--global] set path <path>
+githook config [--global] get path
 
-githook config hook.path <path>
-  -- sets hook.path in .git/config local to repository
+githook config [--global] set script <path>
+githook config [--global] get script <path>
 
-githook list --hook <hook>
-  -- lists available tests for the given hook(s)
+githook config [--global] show
 
-githook assign <scripts> --hook <hook>
-  -- assigns the listed scripts (which must be available in the hook path, and registerd) to the given hooks
-     in the .git/config file under the githooks.<hookname>.tests config path
+githook list [--hook <hook1,hook2,hookN>]
+  --  lists tests for the given hook(s)
 
-GitHook::HookGroup::register(name) do
-  hook :pre_commit, :depends_on => { :command => 'puppet'} do
-    perform "Syntax Check" do
-      on :type => [ :modified, :added ], :name => %r{\.pp$} do
-      end
+githook attach [--hook <hook1,hookN>] [--script <path> | --path <path>]
+  --  attaches the listed hooks (or all if none specified) to the githook runner
+      optionally sets the script XOR path
+
+githooks run [--hook <hook1,hookN>] [--[un]staged] [--args -- one two three ... fifty]
+  --  runs the selected hooks (or pre-commit, if none specified) passing
+      the argument list to the script
+
+----
+
+GitHook::Hook.register 'pre-commit' do
+  command ruby, path: /usr/local/bin/ruby
+
+  section 'Syntax Checks' do
+    test 'Ruby Syntax' do
+      limit(:type).to :modified, :added
+      limit(:path).to %r{\.rb$}
+
+      on_each_file { |file| ruby '-c', file.path }
     end
   end
+end
 
-[hook.path]
-  /pre_commit
-    puppet.rb
-      Hook.register(pre_commit, "PUPPET") do
-        depends_on :command => 'puppet'
-        subsection 'General'
-        peform "Syntax Check" do
-          on :type => [ :modified, :added ], :name => %r{\.pp$} do
-          end
-        end
-      end
+-- repository's .git/config file --
 
-    bind.rb
-      Hook.register(:pre_commit, "BIND") do
-        depends_on :command => 'puppet'
-        subsection 'General'
-        peform "Syntax Check" do
-          on :type => [ :modified, :added ], :name => %r{/modules/bind/files/} do
-          end
-        end
-      end
-
-    ruby.rb
-      Hook.register(:pre_commit, "RUBY") do
-        depends_on :command => 'ruby'
-        subsection 'General'
-        peform "Syntax Check" do
-          on :type => [ :modified, :added ], :name => %r{/modules/bind/files/} do
-          end
-        end
-      end
-
-    php.rb
-      Hook.register(:pre_commit, "PHP") do
-        depends_on :command => 'php'
-        subsection "General"
-        perform "Syntax Check" do
-          on :type => [ :modified, :added ], :name => %r{\.php$} do
-          end
-        end
-      end
-
-    policy.rb
-      Hook.register(commit_msg, "POLICY") do
-        subsection "Standards"
-        perform "Tabs Vs Spaces"
-        perform
-      end
-
-  /commit_msg
-    policy.rb
-      Hook.register(:commit_msg, "POLICY") do
-        subsection "Standards"
-        perform "Commit Message Length"
-        perform "Has ticket reference"
-      end
+[githooks]
+  tests_path  = /foo/lib
+  loader_path = /foo/bin/runner.sh
