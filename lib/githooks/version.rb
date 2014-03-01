@@ -16,5 +16,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-Infinity = 1.0 / 0 unless defined? Infinity
-
+module GitHooks
+  VERSION = "1.0.0"
+end

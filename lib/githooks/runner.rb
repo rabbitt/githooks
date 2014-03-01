@@ -1,9 +1,31 @@
-require 'githooker/terminal_colors'
+=begin
+Copyright (C) 2013 Carl P. Corliss
 
-module GitHooker
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+=end
+
+require 'githooks/terminal_colors'
+
+module GitHooks
   module Runner
     extend TerminalColors
     extend self
+
+    MARK_SUCCESS = '✓'
+    MARK_FAILURE = 'X'
+    MARK_UNKNOWN = '?'
 
     def start
       max_section_length = Hook.sections.max {|s| s.name.length }
@@ -26,14 +48,14 @@ module GitHooker
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
 
           action.errors.each do |error|
-            printf "    %s %s\n", bright_red(TerminalColors::MARK_FAILURE), error
+            printf "    %s %s\n", bright_red(MARK_FAILURE), error
           end unless action.errors.empty?
 
           action.warnings.each do |warning|
             printf "    %s %s\n",
               ( action.success? ?
-                bright_green(TerminalColors::MARK_SUCCESS) :
-                bright_yellow(TerminalColors::MARK_UNKNOWN)
+                bright_green(MARK_SUCCESS) :
+                bright_yellow(MARK_UNKNOWN)
               ), warning
           end unless action.warnings.empty?
         end

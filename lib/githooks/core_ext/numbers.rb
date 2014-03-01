@@ -1,1 +1,1 @@
-require 'githooker/core_ext/numbers/infinity'
+require_relative 'numbers/infinity'

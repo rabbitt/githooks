@@ -1,24 +1,42 @@
+=begin
+Copyright (C) 2013 Carl P. Corliss
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+=end
+
 require 'delegate'
 
-module GitHooker
+module GitHooks
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_accessor :stop_on_error
+    attr_accessor :name, :actions, :hook
 
-    def initialize(name)
-      @name          = name.to_s.titleize
-      @success       = true
-      @stop_on_error = false
-      @actions       = []
+    def initialize(name, hook, &block)
+      @name    = name.to_s.titleize
+      @success = true
+      @actions   = []
+      @hook    = hook
+
+      instance_eval(&block)
 
       waiting!
     end
 
     def actions
-      @actions.select { |action|
-        Repo.match_phase(action.phase)
-      }
+      @actions.select { |action| !action.manifest.empty? }
     end
     alias :__getobj__ :actions
 
@@ -46,11 +64,17 @@ module GitHooker
     end
 
     def name()
-      "#{GitHooker::SCRIPT_NAME.camelize} :: #{@name}"
+      "#{GitHooks::SCRIPT_NAME.camelize} :: #{@name}"
     end
 
     def colored_name()
       status_colorize name
+    end
+
+    def action(title, options = {}, &block)
+      raise RegistrationError, "#perform called before section defined" unless @section
+      raise ArgumentError, "Missing required block to #perform" unless block_given?
+      @section << Action.new(title, options.delete(:phase) || @phase, &block)
     end
 
     def status_colorize(text)

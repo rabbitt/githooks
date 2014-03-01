@@ -1,29 +1,46 @@
-# encoding: utf-8
+=begin
+Copyright (C) 2013 Carl P. Corliss
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+=end
+
 require 'stringio'
 require 'open3'
 
-module GitHooker
+module GitHooks
   class Action
     include TerminalColors
 
-    attr_reader :errors, :warnings, :title, :success, :phase
+    attr_reader :title, :errors, :warnings
 
-    def initialize(title, phase, &block)
-      raise ArgumentError, "Missing required block for Action#new" unless block_given?
-
-      phase = phase.to_s.to_sym
-      unless GitHooker::VALID_PHASES.include? phase
-        raise ArgumentError, "Phase must be one of #{GitHooker::VALID_PHASES.join(', ')}"
-      end
-
-      @title    = title.to_s.titleize
+    def initialize(title, section, block)
+      @title    = title
+      @filters  = []
       @success  = true
-      @phase    = phase || :any
       @errors   = []
       @warnings = []
-      @action   = DSL.new(block)
+      @on       = nil
+      @section  = section
+
+      instance_eval(&block)
 
       waiting!
+    end
+
+    def manifest
+      section.hook.manifest.filter(@filters)
     end
 
     def colored_title()
@@ -65,45 +82,42 @@ module GitHooker
       end
     end
 
-    class DSL
-      include Repo
+    def method_missing(method, *args, &block)
+      return super unless command = section.hook.find_command(method)
+      run_command(command, *args, &block)
+    end
 
-      def initialize(block)
-        @block = block
-      end
+    # DSL Methods
 
-      def call() instance_eval(&@block); end
+    def args() ARGV.dup; end
 
-      # DSL Methods
-      def args() ARGV.dup; end
+    def limit(what)
+      @filters << Repository::Limiter.new(what, self)
+    end
 
-      def on_each(options = {}, &block)
-        block = block || options.delete(:call)
-        Repo.match_files_on(options).collect { |file|
-          block.call(file)
-        }.all? # test that they all returned true
-      end
-      alias :on :on_each
+    def on_each_file(&block)
+      @on = -> { manifest.collect { |file| block.call(fall) }.all? }
+    end
 
-      def on_all(options = {}, &block)
-        block = block || options.delete(:call)
-        block.call(Repo.match_files_on(options))
-      end
+    def on_all_files(&block)
+      @on = ->() { block.call manifest }
+    end
 
-      def execute(cmd, output_line_prefix=nil)
-        Open3.popen3(cmd) { |i, o, e, t|
+    private
 
-          o.read.split(/\n/).each do |line|
-            $stdout.puts output_line_prefix ? "#{output_line_prefix}: #{line}" : line
-          end
+    def run_command(command, *args, &block)
+      options = args.extract_options
+      prefix  = options.delete(:prefix)
 
-          e.read.split(/\n/).each do |line|
-            $stderr.puts output_line_prefix ? "#{output_line_prefix}: #{line}" : line
-          end
+      command.call(*args, &block).tap { |res|
+        res.output.split(/\n/).each do |line|
+          $stdout.puts prefix ? "#{prefix}: #{line}" : line
+        end
 
-          t.value
-        }.success?
-      end
+        res.error.split(/\n/).each do |line|
+          $stderr.puts prefix ? "#{prefix}: #{line}" : line
+        end
+      }.status.success?
     end
   end
 end
