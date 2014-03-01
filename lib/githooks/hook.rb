@@ -154,7 +154,7 @@ module GitHooks
           class << result.status
             def failed?() !success?; end
           end
-        end
+        }
 
         block_given? ? yield(result) : result
       end
