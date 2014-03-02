@@ -2,7 +2,7 @@
 require 'pathname'
 
 module GitHooks
-  module Utils
+  module SystemUtils
     def which(name)
       find_bin(name).first
     end
