@@ -19,4 +19,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require_relative 'core_ext/array'
 require_relative 'core_ext/numbers'
 require_relative 'core_ext/string'
+require_relative 'core_ext/pathname'
 require_relative 'core_ext/process'
