@@ -20,8 +20,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require 'open3'
 
 module GitHooks
-  class RegistrationError < StandardError; end
-
   class Hook
     @__phases__ = {}
     @__mutex__  = Mutex.new
@@ -138,7 +136,7 @@ module GitHooks
       attr_reader :aliases, :path, :name
       def initialize(name, options = {})
         @name = name
-        @path = options.delete(:path) || Utils.which(name)
+        @path = options.delete(:path) || SystemUtils.which(name)
 
         @aliases = options.delete(:aliases) || []
         @aliases << name

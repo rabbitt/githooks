@@ -35,8 +35,6 @@ module GitHooks
 
     DEFAULT_DIFF_INDEX_OPTIONS = { staged: true, ref: 'HEAD' }
 
-    class NotAGitRepoError < StandardError; end
-
     @__instance__ = {}
     @__mutex__    = Mutex.new
     def self.instance(path = Dir.getwd)
@@ -73,7 +71,7 @@ module GitHooks
     def get_root_path(path)
       git_command(%w( rev-parse --show-toplevel), path: path).tap do |result|
         unless result.status.success? && result.output !~ /not a git repository/i
-          fail NotAGitRepoError, "Unable to find a valid git repo in #{path}"
+          fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
         end
       end.output.strip
     end
