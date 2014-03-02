@@ -45,12 +45,17 @@ module GitHooks
     module_function :color
 
     ['light', 'bright', 'dark', ''].each do |shade|
-      ['blink', 'blinking', ''].each do |style|
+      ['blinking', ''].each do |style|
         %w(black gray red green yellow blue magenta purple cyan white).each do |color|
-          name = "#{style}_#{shade}_#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
-          const_set(name.upcase, color(name))
-          define_method(name) { |text| "#{color(name)}#{text}#{color(:normal)}" }
-          module_function name.to_sym
+          name1 = "color_#{style}_#{shade}_#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
+          name2 = "color_#{style}_#{shade}#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
+          [name1, name2].each do |name|
+            unless const_defined? name.upcase
+              const_set(name.upcase, color(name))
+              define_method(name) { |text| "#{color(name)}#{text}#{color(:normal)}" }
+              module_function name.to_sym
+            end
+          end
         end
       end
     end

@@ -41,10 +41,10 @@ module GitHooks
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
 
           action.errors.each do |error|
-            printf "    %s %s\n", bright_red(MARK_FAILURE), error
+            printf "    %s %s\n", color_bright_red(MARK_FAILURE), error
           end
 
-          state_string = ( action.success? ? bright_green(MARK_SUCCESS) : bright_yellow(MARK_UNKNOWN))
+          state_string = ( action.success? ? color_bright_green(MARK_SUCCESS) : color_bright_yellow(MARK_UNKNOWN))
           action.warnings.each do |warning|
             printf "    %s %s\n", state_string, warning
           end

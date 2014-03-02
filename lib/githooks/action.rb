@@ -63,8 +63,8 @@ module GitHooks
     end
 
     def status_colorize(text)
-      return dark_cyan(text) unless finished?
-      success? ? bright_green(text) : bright_red(text)
+      return color_dark_cyan(text) unless finished?
+      success? ? color_bright_green(text) : color_bright_red(text)
     end
 
     def run
