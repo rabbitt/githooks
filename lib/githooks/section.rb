@@ -23,8 +23,9 @@ module GitHooks
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_accessor :name, :actions, :hook
-    alias :title :name
+    attr_reader :name, :hook, :success
+    alias_method :title, :name
+    alias_method :success?, :success
 
     def initialize(name, hook, &block)
       @name    = name.to_s.titleize
@@ -40,55 +41,51 @@ module GitHooks
     def actions
       @actions.select { |action| !action.manifest.empty? }
     end
-    alias :__getobj__ :actions
+    alias_method :__getobj__, :actions
 
-    def <<(action) @actions << action; end
+    def <<(action)
+      @actions << action
+    end
 
-    def stop_on_error?() @stop_on_error; end
-
-    def success?() @success; end
-
-    def finished?() @status == :finished; end
-    def finished!() @status = :finished; end
-
-    def running?() @status == :running; end
-    def running!() @status = :running; end
-
-    def waiting?() @status == :waiting; end
-    def waiting!() @status = :waiting; end
+    %w(finished running waiting).each do |method|
+      define_method(:"#{method}?") { @status == method.to_sym }
+      define_method(:"#{method}!") { @status = method.to_sym }
+    end
 
     def completed?
       @actions.all? { |action| action.finished? }
     end
 
-    def wait_count()
+    def wait_count
       @actions.select { |action| action.waiting? }.size
     end
 
-    def name()
+    def name
       "#{GitHooks::SCRIPT_NAME.camelize} :: #{@name}"
     end
 
-    def colored_name()
+    def colored_name
       status_colorize name
     end
 
     def action(title, options = {}, &block)
-      raise ArgumentError, "Missing required block to #perform" unless block_given?
+      fail ArgumentError, 'Missing required block to #perform' unless block_given?
       @actions << Action.new(title, self, &block)
       self
     end
 
     def status_colorize(text)
-      finished? && completed? ? (success? ? bright_green(text) : bright_red(text)) : dark_cyan(text)
+      if finished? && completed?
+        success? ? bright_green(text) : bright_red(text)
+      else
+        dark_cyan(text)
+      end
     end
 
-    def run()
+    def run
       running!
       begin
-        actions.collect { |action|
-          @success &= action.run
-        }.all?
+        actions.collect { |action| @success &= action.run }.all?
       ensure
         finished!
       end

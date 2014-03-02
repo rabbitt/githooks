@@ -23,23 +23,17 @@ require 'open3'
 
 module GitHooks
   class Repository
-
     CHANGE_TYPE_SYMBOLS = {
-      added:    'A',
-      copied:   'C',
-      deleted:  'D',
-      modified: 'M',
-      renamed:  'R',
-      retyped:  'T',
-      unknown:  'U',
-      unmerged: 'X',
-      broken:   'B',
-      any:      '*'
+      added:    'A', copied:   'C',
+      deleted:  'D', modified: 'M',
+      renamed:  'R', retyped:  'T',
+      unknown:  'U', unmerged: 'X',
+      broken:   'B', any:      '*'
     }.freeze
 
     CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze
 
-    DEFAULT_DIFF_INDEX_OPTIONS = { :staged => true, :ref => 'HEAD' }
+    DEFAULT_DIFF_INDEX_OPTIONS = { staged: true, ref: 'HEAD' }
 
     class NotAGitRepoError < StandardError; end
 
@@ -49,10 +43,10 @@ module GitHooks
       path = Pathname.new(path).realpath
       return @__instance__[path] if @__instance__[path]
 
-      @__mutex__.synchronize {
+      @__mutex__.synchronize do
         return @__instance__[path] if @__instance__[path]
         @__instance__[path] = new(path)
-      }
+      end
     end
 
     def self.method_missing(method, *args, &block)
@@ -73,22 +67,22 @@ module GitHooks
 
       command = Shellwords.shelljoin(['git', *args].flatten)
       o, e, s = Open3.capture3(%Q{ cd #{path} ; #{command} })
-      OpenStruct.new(output: o.strip, error: e.strip, status: (class << s; def failed?() !success?; end; end; s))
+      OpenStruct.new(output: o.strip, error: e.strip, status: s)
     end
 
     def get_root_path(path)
-      git_command(%w( rev-parse --show-toplevel), path: path).tap { |result|
+      git_command(%w( rev-parse --show-toplevel), path: path).tap do |result|
         unless result.status.success? && result.output !~ /not a git repository/i
-          raise NotAGitRepoError, "Unable to find a valid git repo in #{path}"
+          fail NotAGitRepoError, "Unable to find a valid git repo in #{path}"
         end
-      }.output.strip
+      end.output.strip
     end
 
-    def stash()
+    def stash
       git_command(%w( stash -q --keep-index -a)).status.success?
     end
 
-    def unstash()
+    def unstash
       git_command(%w(stash pop -q)).status.success?
     end
 
@@ -111,30 +105,24 @@ module GitHooks
     end
 
     def staged_manifest
-      parse_diff_index_data(diff_index(:staged => true, :ref => 'HEAD'))
+      parse_diff_index_data(diff_index(staged: true, ref: 'HEAD'))
     end
-    alias :commit_manifest :staged_manifest
+    alias_method :commit_manifest, :staged_manifest
 
     def unstaged_manifest
-      parse_diff_index_data(diff_index(:staged => false, :ref => 'HEAD'))
+      parse_diff_index_data(diff_index(staged: false, ref: 'HEAD'))
     end
 
     def match_files_on(options)
-      raise ArgumentError, "options should be a hash" unless options.is_a? Hash
+      fail ArgumentError, 'options should be a hash' unless options.is_a? Hash
       match(manifest, options.to_a)
     end
 
-    # returns the intersection of all file filters
-    def match(manifest_files, filters)
-      manifest_files.tap { |files|
-        filters.each {|type, value| files.select! { |name, data| match_file(data, type, value) } }
-      }.values
-    end
-
     def while_stashed
-      raise ArgumentError, "Missing required block" unless block_given?
+      fail ArgumentError, 'Missing required block' unless block_given?
       begin
-        stash; return yield
+        stash
+        return yield
       ensure
         unstash
       end
@@ -145,9 +133,8 @@ module GitHooks
       $? == 0
     end
 
-
     def parse_diff_index_data(index)
-      index.split(/\n+/).collect{ |data| Repository::File.new(data) }
+      index.split(/\n+/).collect { |data| Repository::File.new(data) }
     end
     private :parse_diff_index_data
 
@@ -161,7 +148,7 @@ module GitHooks
       def only(*args)
         @only = args.flatten
       end
-      alias :to :only
+      alias_method :to, :only
 
       def limit(files)
         # binding.pry
@@ -193,6 +180,7 @@ module GitHooks
         @score = score.to_i
       end
 
+      # rubocop:disable CyclomaticComplexity
       def attribute_value(attribute)
         case attribute
           when :name then name.to_s
@@ -201,7 +189,8 @@ module GitHooks
           when :mode then to.mode
           when :sha then to.sha
           when :score then score
-          else raise ArgumentError, "Invalid attribute type '#{attribute}' - expected one of: :name, :path, :type, :mode, :sha, or :score"
+          else fail ArgumentError,
+                    "Invalid attribute type '#{attribute}' - expected: :name, :path, :type, :mode, :sha, or :score"
         end
       end
 
@@ -218,6 +207,7 @@ module GitHooks
           when :score then _match == value
         end
       end
+      # rubocop:enable CyclomaticComplexity
 
       def fd
         case type
@@ -257,7 +247,3 @@ module GitHooks
     end
   end
 end
-
-
-
-

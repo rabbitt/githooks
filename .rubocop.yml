@@ -1,0 +1,44 @@
+AllCops:
+  Includes:
+    - Rakefile
+  Excludes:
+    - test.rb
+    - bin/**
+
+
+SpecialGlobalVars:
+  Enabled: false
+
+PerlBackrefs:
+  Enabled: false
+
+Documentation:
+  Enabled: false
+
+BlockComments:
+  Enabled: false
+
+Encoding:
+  Enabled: false
+
+MethodLength:
+  CountComments: false # count full line comments?
+  Max: 15
+
+CollectionMethods:
+  PreferredMethods:
+    map: 'collect'
+    map!: 'collect!'
+    reduce: 'inject'
+    detect: 'find'
+    find_all: 'select'
+
+CaseIndentation:
+  IndentWhenRelativeTo: case
+  SupportedStyles:
+    - case
+    - end
+  IndentOneStep: true
+
+LineLength:
+  Max: 120

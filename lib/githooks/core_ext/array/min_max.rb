@@ -21,15 +21,17 @@ require_relative '../numbers/infinity'
 class Array
   def min(&block)
     collection = block_given? ? collect { |obj| yield obj } : self
-    collection.inject(Infinity) { |min, num|
-      min = num < min ? num : min; min
-    }
+    collection.inject(Infinity) do |min, num|
+      min = num < min ? num : min
+      min
+    end
   end
 
   def max(&block)
     collection = block_given? ? collect { |obj| yield obj } : self
-    collection.inject(0) { |max, num|
-      max = num > max ? num : max; max
-    }
+    collection.inject(0) do |max, num|
+      max = num > max ? num : max
+      max
+    end
   end
 end

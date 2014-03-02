@@ -3,63 +3,57 @@
 =end
 
 class String
-  def constantize()
-    names = self.split('::')
+  def constantize
+    names = split('::')
     names.shift if names.empty? || names.first.empty?
 
-    begin
-      names.inject(Object) { |obj, name|
-        if obj.const_defined?(name)
-          obj.const_get(name)
-        else
-          obj.const_missing(name)
-        end
-      }
-    rescue NameError => e
-      raise unless e.message =~ /uninitialized constant/
+    names.inject(Object) do |obj, name|
+      obj.const_defined?(name) ? obj.const_get(name) : obj.const_missing(name)
     end
+  rescue NameError => e
+    raise unless e.message =~ /uninitialized constant/
   end
 
-  def camelize()
-    self.dup.camelize!
+  def camelize
+    dup.camelize!
   end
 
-  def camelize!()
+  def camelize!
     self.sub!(/^[a-z\d]*/, &:capitalize)
     self.gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{$2.capitalize}" }
     self.gsub!('/', '::')
   end
 
-  def underscore()
-    self.dup.underscore!
+  def underscore
+    dup.underscore!
   end
 
-  def underscore!()
-    self.tap {|word|
-      word.gsub!(/([A-Z\d]+)([A-Z][a-z])/,'\1_\2')
-      word.gsub!(/([a-z\d])([A-Z])/,'\1_\2')
-      word.tr!("-", "_")
+  def underscore!
+    tap do |word|
+      word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
+      word.gsub!(/([a-z\d])([A-Z])/, '\1_\2')
+      word.tr!('-', '_')
       word.downcase!
-    }
+    end
   end
 
   def titleize
-    self.dup.titleize!
+    dup.titleize!
   end
-  alias :titlize :titleize
+  alias_method :titlize, :titleize
 
   def titleize!
-    self.tap { |title|
+    tap do |title|
       title.replace(title.split(/\b/).collect(&:capitalize).join)
-    }
+    end
   end
-  alias :titlize! :titleize!
+  alias_method :titlize!, :titleize!
 
-  def dasherize()
-    self.dup.dasherize!
+  def dasherize
+    dup.dasherize!
   end
 
-  def dasherize!()
+  def dasherize!
     self.underscore!.gsub!(/_/, '-')
   end
 end

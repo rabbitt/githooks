@@ -17,4 +17,3 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 Infinity = 1.0 / 0 unless defined? Infinity
-

@@ -23,32 +23,34 @@ module GitHooks
   class RegistrationError < StandardError; end
 
   class Hook
-
     @__phases__ = {}
     @__mutex__  = Mutex.new
 
     class << self
+      # rubocop:disable TrivialAccessors
       def instances
         @__phases__
       end
-      alias :phases :instances
+      alias_method :phases, :instances
+      # rubocop:enable TrivialAccessors
 
       def instance(phase = 'pre-commit')
         phase = phase.to_s.gsub('_', '-').to_sym
         unless GitHooks::VALID_PHASES.include? phase
-          raise ArgumentError, "Hook phase (#{phase.inspect}) must be one of #{GitHooks::VALID_PHASES.collect(&:inspect).join(', ')}"
+          valid_phases = GitHooks::VALID_PHASES.collect(&:inspect).join(', ')
+          fail ArgumentError, "Hook phase (#{phase.inspect}) must be one of #{valid_phases}"
         end
 
         return phases[phase] if phases[phase]
 
-        @__mutex__.synchronize {
+        @__mutex__.synchronize do
           return phases[phase] if phases[phase]
           phases[phase] = new(phase)
-        }
+        end
       end
       private :instance
 
-      alias :[] :instance
+      alias_method :[], :instance
       private :[]
 
       def method_missing(method, *args, &block)
@@ -57,7 +59,7 @@ module GitHooks
       end
 
       def register(phase, &block)
-        raise ArgumentError, "Missing required block to #register" unless block_given?
+        fail ArgumentError, 'Missing required block to #register' unless block_given?
         self[phase].instance_eval(&block)
       end
     end
@@ -77,9 +79,8 @@ module GitHooks
 
     def run
       # only run sections that have actions matching files in the manifest
-      @sections.select { |section|
-        not section.actions.empty?
-      }.collect { |section| section.run }.all?
+      runable_sections = @sections.select { |section| !section.actions.empty? }
+      runable_sections.collect { |section| section.run }.all?
     end
 
     def method_missing(method, *args, &block)
@@ -141,7 +142,7 @@ module GitHooks
 
         @aliases = options.delete(:aliases) || []
         @aliases << name
-        @aliases.collect!{ |_alias| normalize(_alias) }
+        @aliases.collect! { |_alias| normalize(_alias) }
         @aliases.uniq!
       end
 
@@ -151,17 +152,14 @@ module GitHooks
 
       def call(*args, &block)
         args = [args].flatten
-        args.collect!{ |arg| arg.is_a?(Repository::File) ? arg.path.to_s : arg }
+        args.collect! { |arg| arg.is_a?(Repository::File) ? arg.path.to_s : arg }
         args.collect!(&:to_s)
 
         command = shelljoin([command_path] | args)
 
-        result = OpenStruct.new(output: nil, error: nil, status: nil).tap { |r|
+        result = OpenStruct.new(output: nil, error: nil, status: nil).tap do |r|
           r.output, r.error, r.status = Open3.capture3(command)
-          class << r.status
-            def failed?() !success?; end
-          end
-        }
+        end
 
         block_given? ? yield(result) : result
       end

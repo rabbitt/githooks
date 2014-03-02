@@ -19,32 +19,30 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 module GitHooks
   module TerminalColors
-    extend self
+    NORMAL = "\033[0;0"
 
-    NORMAL = "\033[0;0m"
+    REGEX_COLOR_MAP = {
+      /(black|gr[ae]y)/  => 30,
+      /red/              => 31,
+      /green/            => 32,
+      /yellow/           => 33,
+      /blue/             => 34,
+      /(magenta|purple)/ => 35,
+      /cyan/             => 36,
+      /white/            => 37
+    }
 
     def color(name)
-      name = name.to_s
       # return '' unless $stdout.tty? && $stderr.tty?
-      return NORMAL if name.match(/norm/)
+      light = !!name.match(/(light|bright)/) ? '1' : '0'
+      blink = !!name.match(/blink/) ? ';5' : ''
 
-      light = !!name.to_s.match(/(light|bright)/) ? "1" : "0"
-      blink = !!name.to_s.match(/blink/)
+      color_code = REGEX_COLOR_MAP.find { |key, code| name =~ key }
+      color_code = color_code ? color_code.last : NORMAL
 
-      color_code = 30 + case name.to_s
-        when /black/, /gray/ then 0
-        when /red/ then 1
-        when /green/ then 2
-        when /yellow/ then 3
-        when /blue/ then 4
-        when /magenta/,/purple/ then 5
-        when /cyan/ then 6
-        when /white/ then 7
-        else return NORMAL
-      end
-
-      "\033[#{light}#{blink ? ';5' : ''};#{color_code}m"
+      "\033[#{light}#{blink};#{color_code}m"
     end
+    module_function :color
 
     ['light', 'bright', 'dark', ''].each do |shade|
       ['blink', 'blinking', ''].each do |style|
@@ -52,13 +50,9 @@ module GitHooks
           name = "#{style}_#{shade}_#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
           const_set(name.upcase, color(name))
           define_method(name) { |text| "#{color(name)}#{text}#{color(:normal)}" }
+          module_function name.to_sym
         end
       end
     end
   end
-end
-
-if $0 == __FILE__
-  include GitHooks::TerminalColors
-  puts send(ARGV.shift, ARGV.join(" ")) unless ARGV.empty?
 end
