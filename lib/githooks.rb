@@ -24,21 +24,20 @@ require 'pry'
 
 module GitHooks
   autoload :Hook,              'githooks/hook'
-  autoload :Repository,        'githooks/repository'
-  autoload :Runner,            'githooks/runner'
   autoload :Section,           'githooks/section'
   autoload :Action,            'githooks/action'
+  autoload :Repository,        'githooks/repository'
+  autoload :Runner,            'githooks/runner'
+  autoload :Error,             'githooks/error'
+  autoload :SystemUtils,       'githooks/system_utils'
   autoload :TerminalColors,    'githooks/terminal_colors'
-  autoload :NotAGitRepoError,  'githooks/repository'
-  autoload :RegistrationError, 'githooks/hook'
-  autoload :Utils,             'githooks/utils'
 
   LIB_PATH = Pathname.new(__FILE__).dirname
   GEM_PATH = LIB_PATH.parent
 
-  SCRIPT_NAME     = Pathname.new($0).basename.to_s
-  SCRIPT_DIR      = Pathname.new($0).dirname.realpath
-  SCRIPT_PATH     = SCRIPT_DIR + SCRIPT_NAME
+  SCRIPT_PATH     = Pathname.new($0).realpath
+  SCRIPT_NAME     = SCRIPT_PATH.basename.to_s
+  SCRIPT_DIR      = SCRIPT_PATH.dirname
 
   REPO_ROOT   = (path = Repository.root_path).empty? ? SCRIPT_DIR : Pathname.new(path)
 
