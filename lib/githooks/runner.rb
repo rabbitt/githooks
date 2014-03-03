@@ -27,15 +27,14 @@ module GitHooks
     MARK_FAILURE = 'X'
     MARK_UNKNOWN = '?'
 
-    # rubocop:disable MethodLength
-    def start
-      success        = Hook.run
+    def start(phase = 'pre-commit', repo_path = nil) # rubocop:disable MethodLength
+      success        = Hook.phases[phase.to_sym].repository_path(repo_path).run
       section_length = Hook.sections.max { |s| s.title.length }
       sections       = Hook.sections.select { |section| !section.actions.empty? }
 
       sections.each do |section|
         hash_tail_length = (section_length - section.title.length)
-        printf "===== %s %s=====\n", section.colored_name, ('=' * hash_tail_length)
+        printf "===== %s %s=====\n", section.colored_name(phase), ('=' * hash_tail_length)
 
         section.actions.each_with_index do |action, index|
           printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
@@ -62,6 +61,33 @@ module GitHooks
       exit(success ? 0 : 1)
     end
     module_function :start
-    # rubocop:enable MethodLength
+
+    def load_tests(path) # rubocop:disable MethodLength
+      hooks_root = Pathname.new(path).realpath
+      hooks_libs = hooks_root + 'lib'
+      gemfile    = hooks_root + 'Gemfile'
+      ENV['BUNDLE_GEMFILE'] = (hooks_root + 'Gemfile').to_s
+
+      puts "loading Gemfile from: #{gemfile}"
+
+      if gemfile.exist?
+        begin
+          require 'bundler'
+          Bundler.require(:default)
+        rescue LoadError
+          puts "Unable to load bundler - please make sure it's installed."
+          raise # rubocop:disable SignalException
+        rescue Bundler::GemNotFound
+          puts 'Error: #{e.message}'
+          puts 'Did you bundle install your Gemfile?'
+          raise # rubocop:disable SignalException
+        end
+      end
+
+      $:.unshift hooks_libs.to_s
+      libs = SystemUtils.with_path(hooks_libs) { Dir['**/*.rb'] }
+      libs.each { |lib| require lib.gsub('.rb', '') }
+    end
+    module_function :load_tests
   end
 end

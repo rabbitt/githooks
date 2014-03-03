@@ -23,6 +23,12 @@ require 'githooks/version'
 require 'pry'
 
 module GitHooks
+  AUTHOR = 'Carl P. Corliss <rabbitt@gmail.com>'
+
+  autoload :Config,            'githooks/config'
+  autoload :CommandRunner,     'githooks/command'
+  autoload :Command,           'githooks/command'
+  autoload :CLI,               'githooks/cli'
   autoload :Hook,              'githooks/hook'
   autoload :Section,           'githooks/section'
   autoload :Action,            'githooks/action'
@@ -32,15 +38,11 @@ module GitHooks
   autoload :SystemUtils,       'githooks/system_utils'
   autoload :TerminalColors,    'githooks/terminal_colors'
 
-  LIB_PATH = Pathname.new(__FILE__).dirname
+  LIB_PATH = Pathname.new(__FILE__).dirname.realpath
   GEM_PATH = LIB_PATH.parent
 
-  SCRIPT_PATH     = Pathname.new($0).realpath
-  SCRIPT_NAME     = SCRIPT_PATH.basename.to_s
-  SCRIPT_DIR      = SCRIPT_PATH.dirname
-
-  REPO_ROOT   = (path = Repository.root_path).empty? ? SCRIPT_DIR : Pathname.new(path)
-
+  SCRIPT_PATH = Pathname.new($0)
+  SCRIPT_NAME = SCRIPT_PATH.basename.to_s
   HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
 
   VALID_PHASES = %w{ any pre-commit commit-msg }.collect(&:to_sym).freeze

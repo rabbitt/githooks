@@ -110,13 +110,18 @@ module GitHooks
       @on = ->() { block.call manifest }
     end
 
-    private
+    def on(&block)
+      @on = ->() { block.call }
+    end
+
+  private
 
     def run_command(command, *args, &block)
       options = args.extract_options
       prefix  = options.delete(:prefix_output)
+      args << options
 
-      command.call(*args, &block).tap do |res|
+      command.execute(*args, &block).tap do |res|
         res.output.split(/\n/).each do |line|
           $stdout.puts prefix ? "#{prefix}: #{line}" : line
         end

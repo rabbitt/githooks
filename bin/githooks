@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+require 'githooks'
+GitHooks::CLI::Base.start(ARGV)

@@ -19,9 +19,12 @@ class String
   end
 
   def camelize!
-    self.sub!(/^[a-z\d]*/, &:capitalize)
-    self.gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{$2.capitalize}" }
-    self.gsub!('/', '::')
+    tap do
+      gsub!('-', '_')
+      sub!(/^[a-z\d]*/, &:capitalize)
+      gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{$2.capitalize}" }
+      gsub!('/', '::')
+    end
   end
 
   def underscore
@@ -29,11 +32,11 @@ class String
   end
 
   def underscore!
-    tap do |word|
-      word.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
-      word.gsub!(/([a-z\d])([A-Z])/, '\1_\2')
-      word.tr!('-', '_')
-      word.downcase!
+    tap do
+      gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
+      gsub!(/([a-z\d])([A-Z])/, '\1_\2')
+      tr!('-', '_')
+      downcase!
     end
   end
 
@@ -43,8 +46,10 @@ class String
   alias_method :titlize, :titleize
 
   def titleize!
-    tap do |title|
-      title.replace(title.split(/\b/).collect(&:capitalize).join)
+    tap do
+      replace(
+        split(/\b/).collect(&:capitalize).join
+      )
     end
   end
   alias_method :titlize!, :titleize!
@@ -54,6 +59,9 @@ class String
   end
 
   def dasherize!
-    self.underscore!.gsub!(/_/, '-')
+    tap do
+      underscore!
+      gsub!(/_/, '-')
+    end
   end
 end

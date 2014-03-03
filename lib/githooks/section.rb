@@ -60,12 +60,13 @@ module GitHooks
       @actions.select { |action| action.waiting? }.size
     end
 
-    def name
-      "#{GitHooks::SCRIPT_NAME.camelize} :: #{@name}"
+    def name(phase = GitHooks::HOOK_NAME)
+      phase = (phase || GitHooks::HOOK_NAME).to_s.gsub('-', '_').camelize
+      "#{phase} :: #{@name}"
     end
 
-    def colored_name
-      status_colorize name
+    def colored_name(phase = GitHooks::HOOK_NAME)
+      status_colorize name(phase)
     end
 
     def action(title, options = {}, &block)

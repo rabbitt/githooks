@@ -21,9 +21,23 @@ BlockComments:
 Encoding:
   Enabled: false
 
+RegexpLiteral:
+  Enabled: false
+
+# dots at the end of lines are okay
+DotPosition:
+  Enabled: false
+
 MethodLength:
-  CountComments: false # count full line comments?
+  CountComments: false
   Max: 15
+
+ParameterLists:
+  Max: 5
+  CountKeywordArgs: true
+
+BlockNesting:
+  Max: 4
 
 CollectionMethods:
   PreferredMethods:
@@ -34,11 +48,20 @@ CollectionMethods:
     find_all: 'select'
 
 CaseIndentation:
-  IndentWhenRelativeTo: case
-  SupportedStyles:
-    - case
-    - end
+  IndentWhenRelativeTo: end
   IndentOneStep: true
 
 LineLength:
-  Max: 120
+  Enabled: false
+
+# Personally, I prefer to outdent public/protected/private, as it makes
+# it easier to see the different sections of code.
+AccessModifierIndentation:
+  EnforcedStyle: outdent
+
+EmptyLinesAroundAccessModifier:
+  Enabled: true
+
+EndAlignment:
+  AlignWith: variable
+

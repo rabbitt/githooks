@@ -20,13 +20,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 lib = File.expand_path('../lib', __FILE__)
 $:.unshift(lib) unless $:.include?(lib)
-require 'githooks/version'
+require 'githooks'
 
 Gem::Specification.new do |spec|
   spec.name             = "rabbitt-githooks"
   spec.version          = GitHooks::VERSION
-  spec.authors          = ["Carl P. Corliss"]
-  spec.email            = ["rabbitt@gmail.com"]
+  spec.authors          = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:first).collect(&:strip)
+  spec.email            = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:last).collect(&:strip)
   spec.description      = "GitHooker provides a framework for building tests that can be used with git hooks"
   spec.homepage         = "http://github.com/rabbitt/githooks"
   spec.summary          = "framework for building git hooks tests"

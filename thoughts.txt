@@ -1,22 +1,38 @@
 
-githook config [--global] set path <path>
-githook config [--global] get path
+githook config [--global] [--hook <hookname>] get <var>
+githook config [--global] [--hook <hookname>] set <var> <value>
+githook config [--global] [--hook <hookname>] unset <var> [<value>]
 
-githook config [--global] set script <path>
-githook config [--global] get script <path>
+  variables:
+    path: <path string>
+      - the path to the tests to load for the given repository or globally. Can not be set if script is set.
+
+    script: <path string>
+      - the path to the script to execute when the given hook(s) are run.
+
+    pre-run-execute: Array<path string>
+      - a list of executables to run before the tests run
+
+    post-run-execute: Array<path string>
+      - a list of executables to run after the tests run
 
 githook config [--global] show
+  - show the current githook configuration (global or repository)
 
 githook list [--hook <hook1,hook2,hookN>]
-  --  lists tests for the given hook(s)
+  --  lists tests for the given hook(s), or all hooks if none specified
 
 githook attach [--hook <hook1,hookN>] [--script <path> | --path <path>]
   --  attaches the listed hooks (or all if none specified) to the githook runner
       optionally sets the script XOR path
 
+githook dettach [--hook <hook1,hookN>]
+  --  detaches the listed hooks, or all hooks if none specified
+
 githooks run [--hook <hook1,hookN>] [--[un]staged] [--args -- one two three ... fifty]
   --  runs the selected hooks (or pre-commit, if none specified) passing
       the argument list to the script
+
 
 ----
 
