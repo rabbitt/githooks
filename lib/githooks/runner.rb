@@ -146,16 +146,19 @@ module GitHooks
 
       if script
         puts 'Main Test Script:'
-        puts "\t#{script}"
+        puts "  #{script}"
       elsif libpath
         puts 'Main Sections/Tests (in execution order):'
+        puts '  Tests loaded from:'
+        puts "    #{libpath}"
+        puts
 
         SystemUtils.quiet { load_tests(libpath, true) }
 
         %w{ pre-commit commit-msg }.each do |phase|
           next unless Hook.phases[phase]
 
-          puts '  Phase #{phase.camelize}:'
+          puts "  Phase #{phase.camelize}:"
           Hook.phases[phase].sections.each_with_index do |section, section_index|
             printf "    %3d: %s\n", section_index + 1, section.title
             section.all.each_with_index do |action, action_index|
