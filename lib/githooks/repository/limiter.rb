@@ -32,7 +32,6 @@ module GitHooks
     alias_method :to, :only
 
     def limit(files)
-      # binding.pry
       files.select! { |file| match_file(file, @only) }
     end
 

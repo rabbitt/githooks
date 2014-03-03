@@ -21,7 +21,6 @@ require 'pathname'
 require 'githooks/error'
 require 'githooks/core_ext'
 require 'githooks/version'
-require 'pry'
 
 module GitHooks
   AUTHOR = 'Carl P. Corliss <rabbitt@gmail.com>'

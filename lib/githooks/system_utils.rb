@@ -2,6 +2,7 @@
 require 'pathname'
 require 'open3'
 require 'ostruct'
+require 'shellwords'
 
 module GitHooks
   module SystemUtils

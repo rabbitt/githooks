@@ -1,5 +1,4 @@
 require 'thor'
-require 'pry'
 
 module GitHooks
   module CLI

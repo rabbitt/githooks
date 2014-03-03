@@ -60,7 +60,6 @@ module GitHooks
     attr_reader :root_path
 
     def initialize(path = Dir.getwd)
-      # binding.pry
       @root_path = get_root_path(path)
     end
     protected :initialize
