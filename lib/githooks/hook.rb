@@ -21,6 +21,8 @@ require_relative 'system_utils'
 
 module GitHooks
   class Hook
+    VALID_PHASES = %w{ pre-commit commit-msg }.freeze
+
     @__phases__ = {}
     @__mutex__  = Mutex.new
 
@@ -31,9 +33,9 @@ module GitHooks
       alias_method :phases, :instances
 
       def instance(phase = 'pre-commit')
-        phase = phase.to_s.gsub('_', '-').to_sym
-        unless GitHooks::VALID_PHASES.include? phase
-          valid_phases = GitHooks::VALID_PHASES.collect(&:inspect).join(', ')
+        phase = phase.to_s
+        unless VALID_PHASES.include? phase
+          valid_phases = VALID_PHASES.collect(&:inspect).join(', ')
           fail ArgumentError, "Hook phase (#{phase.inspect}) must be one of #{valid_phases}"
         end
 
@@ -70,6 +72,7 @@ module GitHooks
     end
 
     def repository_path(path)
+      return self if path.nil?
       @repository = Repository.new(path)
       self
     end

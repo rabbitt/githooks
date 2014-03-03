@@ -43,11 +43,12 @@ module GitHooks
     @__mutex__    = Mutex.new
     def self.instance(path = Dir.getwd)
       path = Pathname.new(path).realpath
-      return @__instance__[path] if @__instance__[path]
+      strpath = path.to_s
+      return @__instance__[strpath] if @__instance__[strpath]
 
       @__mutex__.synchronize do
-        return @__instance__[path] if @__instance__[path]
-        @__instance__[path] = new(path)
+        return @__instance__[strpath] if @__instance__[strpath]
+        @__instance__[strpath] = new(path)
       end
     end
 
@@ -59,6 +60,7 @@ module GitHooks
     attr_reader :root_path
 
     def initialize(path = Dir.getwd)
+      # binding.pry
       @root_path = get_root_path(path)
     end
     protected :initialize

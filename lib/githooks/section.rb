@@ -23,9 +23,10 @@ module GitHooks
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_reader :name, :hook, :success
+    attr_reader :name, :hook, :success, :actions
     alias_method :title, :name
     alias_method :success?, :success
+    alias_method :all, :actions
 
     def initialize(name, hook, &block)
       @name    = name.to_s.titleize
@@ -38,6 +39,8 @@ module GitHooks
       waiting!
     end
 
+    # overrides previous action method to only return
+    # actions that have a non-empty manifest
     def actions
       @actions.select { |action| !action.manifest.empty? }
     end

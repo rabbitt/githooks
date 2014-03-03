@@ -22,7 +22,7 @@ require 'singleton'
 require 'open3'
 
 module GitHooks
-  class Repository::Config
+  class Repository::Config # rubocop:disable ClassLength
     OPTIONS = {
       'path' => { type: :path, multiple: false },
       'script' => { type: :path, multiple: false },
@@ -38,9 +38,14 @@ module GitHooks
       method_name = name.gsub(/-/, '_')
       class_eval(<<-EOS, __FILE__, __LINE__ + 1)
         def #{method_name}(options = {})
-          get('#{name}', options)
+          result = get('#{name}', options)
+          OPTIONS['#{name}'][:multiple] ? [result].flatten.compact : result
         end
       EOS
+    end
+
+    def [](option)
+      send(option.gsub('-', '_'))
     end
 
     def set(option, value, options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
@@ -74,7 +79,14 @@ module GitHooks
       command(global ? '--global' : '--local', var_type, add_type, option, value, path: repo)
     end
 
-    def unset(option, options = {})
+    def remove_section(options = {})
+      repo   = options.delete(:repo_path) || repo_path
+      global = (opt = options.delete(:global)).nil? ? false : opt
+      option = "githooks.#{repo}"
+      command(global ? '--global' : '--local', '--remove-section', option, path: repo)
+    end
+
+    def unset(option, value_regex = nil, options = {})
       unless OPTIONS.keys.include? option
         fail ArgumentError, "Unexpected option '#{option}': expected on of: #{OPTIONS.keys.join(', ')}"
       end
@@ -82,9 +94,12 @@ module GitHooks
       repo   = options.delete(:repo_path) || repo_path
       global = (opt = options.delete(:global)).nil? ? false : opt
       option = "githooks.#{repo}.#{option}"
-      cmd    = options.delete(:all) ? '--unset-all' : '--unset'
 
-      command(global ? '--global' : '--local', cmd, option, path: repo)
+      if options.delete(:all) || value_regex.nil?
+        command(global ? '--global' : '--local', '--unset-all', option, path: repo)
+      else
+        command(global ? '--global' : '--local', '--unset', option, value_regex, path: repo)
+      end
     end
 
     def get(option, options = {})

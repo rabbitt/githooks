@@ -18,7 +18,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 module GitHooks
   class Repository::Limiter
-    attr_reader :type, :action
+    attr_reader :type, :only
 
     def initialize(type, options = {})
       @type   = type
@@ -26,6 +26,7 @@ module GitHooks
     end
 
     def only(*args)
+      return @only if args.empty?
       @only = args.flatten
     end
     alias_method :to, :only

@@ -2,7 +2,7 @@
 
 require 'githooks'
 begin
-  GitHooks::CLI::Base.start(ARGV)
+  GitHooks::Runner.run args: ARGV
 rescue GitHooks::Error => e
   puts e.message
   exit 1

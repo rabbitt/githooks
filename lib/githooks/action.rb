@@ -25,7 +25,7 @@ module GitHooks
     include TerminalColors
 
     attr_reader :title, :section, :on, :limiters, :success, :errors, :warnings
-    private :section, :on, :limiters
+    private :section, :on
     alias_method :success?, :success
 
     def initialize(title, section, &block)

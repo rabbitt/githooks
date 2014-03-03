@@ -33,6 +33,15 @@ module GitHooks
     end
     module_function :with_path
 
+    def quiet(&block)
+      od, ov = GitHooks.debug, GitHooks.verbose
+      GitHooks.debug, GitHooks.verbose = false, false
+      yield
+    ensure
+      GitHooks.debug, GitHooks.verbose = od, ov
+    end
+    module_function :quiet
+
     class Command
       include Shellwords
 
@@ -51,20 +60,25 @@ module GitHooks
         path || name.to_s
       end
 
-      def execute(*args, &block) # rubocop:disable MethodLength, CyclomaticComplexity
-        options = args.extract_options
-        change_to_path    = options.delete(:path)
-        strip_empty_lines = !!options.delete(:strip_empty_lines)
+      def build_command(args, options = {})
+        change_to_path = options['path'] || options[:path]
 
         args = [args].flatten
         args.collect! { |arg| arg.is_a?(Repository::File) ? arg.path.to_s : arg }
         args.collect!(&:to_s)
 
         command = shelljoin([command_path] | args)
-        command = ("cd #{shellescape(change_to_path.to_s)} ; " + command) unless path.nil?
+        command = ("cd #{shellescape(change_to_path.to_s)} ; " + command) unless change_to_path.nil?
+        command
+      end
 
+      def execute(*args, &block) # rubocop:disable MethodLength, CyclomaticComplexity
+        options = args.extract_options
+        strip_empty_lines = !!options.delete(:strip_empty_lines)
+
+        command = build_command(args, options)
         result = OpenStruct.new(output: nil, error: nil, status: nil).tap do |r|
-          # puts "#{Dir.getwd} $ #{command}"
+          puts "#{Dir.getwd} $ #{command}" if GitHooks.debug
           r.output, r.error, r.status = Open3.capture3(command)
           if strip_empty_lines
             r.output = r.output.strip_empty_lines!

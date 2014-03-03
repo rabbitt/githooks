@@ -18,6 +18,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 require 'pathname'
+require 'githooks/error'
 require 'githooks/core_ext'
 require 'githooks/version'
 require 'pry'
@@ -34,16 +35,26 @@ module GitHooks
   autoload :Action,            'githooks/action'
   autoload :Repository,        'githooks/repository'
   autoload :Runner,            'githooks/runner'
-  autoload :Error,             'githooks/error'
   autoload :SystemUtils,       'githooks/system_utils'
   autoload :TerminalColors,    'githooks/terminal_colors'
 
+  class << self
+    attr_reader :debug, :verbose
+
+    def debug=(value)
+      @debug = !!value
+    end
+
+    def verbose=(value)
+      @verbose = !!value
+    end
+  end
+
   LIB_PATH = Pathname.new(__FILE__).dirname.realpath
   GEM_PATH = LIB_PATH.parent
+  BIN_PATH = GEM_PATH + 'bin'
 
   SCRIPT_PATH = Pathname.new($0)
   SCRIPT_NAME = SCRIPT_PATH.basename.to_s
-  HOOK_NAME   = SCRIPT_NAME.to_s.underscore.to_sym
-
-  VALID_PHASES = %w{ any pre-commit commit-msg }.collect(&:to_sym).freeze
+  HOOK_NAME   = SCRIPT_NAME.to_s
 end

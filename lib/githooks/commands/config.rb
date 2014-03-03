@@ -4,6 +4,9 @@ module GitHooks
     class Config < Thor
       VALID_CONFIG_OPTIONS = %w( path script pre-run-execute post-run-execute )
 
+      # class_option :verbose, type: :boolean, desc: 'verbose output', default: false
+      # class_option :debug, type: :boolean, desc: 'debug output', default: false
+
       class_option :global, type: :boolean, desc: 'use global config', default: false
       class_option :hooks, { # rubocop:disable BracesAroundHashParameters
         type: :array,
@@ -12,16 +15,20 @@ module GitHooks
       }
       class_option :repo, { # rubocop:disable BracesAroundHashParameters
         type: :string,
-        default: GitHooks::Repository.root_path,
         desc: 'Repository path to look up configuration values for.'
       }
 
       desc :get, 'display the value for a configuration option'
-      def get(option_name)
+      def get(option_name) # rubocop:disable MethodLength
         unless VALID_CONFIG_OPTIONS.include? option_name
           puts "Invalid option '#{option_name}': expected one of #{VALID_CONFIG_OPTIONS.join(', ')}"
           return 1
         end
+
+        GitHooks.verbose = true if options['verbose']
+        GitHooks.debug = true if options['debug']
+        options['repo'] ||= GitHooks::Repository.root_path
+
         repo_data = GitHooks::Repository::Config.new.get(
           option_name,
           repo_path: options['repo'], global: options['global']
@@ -37,6 +44,10 @@ module GitHooks
 
       desc :set, 'Sets the configuration value '
       def set(option_name, option_value)
+        GitHooks.verbose = true if options['verbose']
+        GitHooks.debug = true if options['debug']
+        options['repo'] ||= GitHooks::Repository.root_path
+
         GitHooks::Repository::Config.new.set(
           option_name,
           option_value,
@@ -47,9 +58,14 @@ module GitHooks
       end
 
       desc :unset, 'Unsets a configuration value'
-      def unset(option_name)
+      def unset(option_name, option_value = nil)
+        GitHooks.verbose = true if options['verbose']
+        GitHooks.debug = true if options['debug']
+        options['repo'] ||= GitHooks::Repository.root_path
+
         GitHooks::Repository::Config.new.unset(
           option_name,
+          option_value,
           repo_path: options['repo'],
           global: options['global']
         )
@@ -59,7 +75,14 @@ module GitHooks
 
       desc :list, 'Lists all githooks configuration values'
       def list
+        puts options.inspect
+
+        GitHooks.verbose = true if options['verbose']
+        GitHooks.debug = true if options['debug']
+
+        options['repo'] ||= GitHooks::Repository.root_path
         config = GitHooks::Repository::Config.new
+
         githooks = config.list(global: options['global'], repo_path: options['repo'])['githooks']
         githooks.each do |path, data|
           puts "Repository #{path}:"
