@@ -35,7 +35,7 @@ module GitHooks
       args    = options['args']   || []
       bundler = !!options['skip-bundler']
 
-      hook    = GitHooks::HOOK_NAME == :githooks ? 'pre-commit' : GitHooks::HOOK_NAME
+      hook    = GitHooks::HOOK_NAME.to_s == 'githooks' ? 'pre-commit' : GitHooks::HOOK_NAME
 
       GitHooks.verbose = !!ENV['GITHOOKS_VERBOSE']
       GitHooks.debug   = !!ENV['GITHOOKS_DEBUG']
