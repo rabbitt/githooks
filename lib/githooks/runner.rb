@@ -47,7 +47,7 @@ module GitHooks
       end
 
       if script && !(options['ignore-script'] || GitHooks.ignore_script)
-        command = "#{script} #{Pathname.new($0).realpath.to_s} #{Shellwords.join(ARGV)};"
+        command = "#{script} #{Pathname.new($0).to_s} #{Shellwords.join(ARGV)};"
         puts "Kernel#exec(#{command.inspect})" if GitHooks.verbose
         exec(command)
       elsif libpath
@@ -214,6 +214,7 @@ module GitHooks
     module_function :run_externals
 
     def start(phase = 'pre-commit', repo_path = nil, args = []) # rubocop:disable MethodLength
+      puts "PHASE: #{phase}" if GitHooks.debug
       active_hook = Hook.phases[phase]
       active_hook.repository_path = repo_path
       active_hook.args = args
