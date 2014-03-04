@@ -80,6 +80,7 @@ module GitHooks
         command = build_command(args, options)
         result = OpenStruct.new(output: nil, error: nil, status: nil).tap do |r|
           puts "#{Dir.getwd} $ #{command}" if GitHooks.debug
+
           r.output, r.error, r.status = if RUBY_ENGINE == 'jruby'
             _, o, e, t = Open3.popen3('/usr/bin/env', 'sh', '-c', command)
             [o.read, e.read, t.value]
@@ -92,6 +93,8 @@ module GitHooks
             r.error  = r.error.strip_empty_lines!
           end
         end
+
+        pp result if GitHooks.debug
 
         block_given? ? yield(result) : result
       end

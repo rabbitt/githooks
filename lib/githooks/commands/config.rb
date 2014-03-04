@@ -43,6 +43,11 @@ module GitHooks
       end
 
       desc :set, 'Sets the configuration value '
+      method_option :'overwrite-all', { # rubocop:disable BracesAroundHashParameters
+        type: :boolean,
+        desc: 'overwrite all existing values.',
+        default: false
+      }
       def set(option_name, option_value)
         GitHooks.verbose = true if options['verbose']
         GitHooks.debug = true if options['debug']
@@ -51,7 +56,9 @@ module GitHooks
         GitHooks::Repository::Config.new.set(
           option_name,
           option_value,
-          repo_path: options['repo'], global: options['global']
+          repo_path: options['repo'],
+          global: options['global'],
+          overwrite: options['overwrite-all']
         ).status.success?
       rescue ArgumentError => e
         puts e.message

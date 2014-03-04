@@ -19,6 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 require 'fileutils'
 require 'githooks/terminal_colors'
+require 'shellwords'
 
 module GitHooks
   module Runner
@@ -33,7 +34,6 @@ module GitHooks
       script  = options['script'] || Repository.instance(repo).config.script
       libpath = options['path']   || Repository.instance(repo).config.path
       args    = options['args']   || []
-      bundler = !!options['skip-bundler']
 
       hook    = GitHooks::HOOK_NAME.to_s == 'githooks' ? 'pre-commit' : GitHooks::HOOK_NAME
 
@@ -46,11 +46,13 @@ module GitHooks
         run_externals('pre-run-execute', repo, args)
       end
 
-      if script
-        system(script)
+      if script && !(options['ignore-script'] || GitHooks.ignore_script)
+        command = "#{script} #{Pathname.new($0).realpath.to_s} #{Shellwords.join(ARGV)};"
+        puts "Kernel#exec(#{command.inspect})" if GitHooks.verbose
+        exec(command)
       elsif libpath
-        load_tests(libpath, bundler)
-        start(hook, repo)
+        load_tests(libpath, options['skip-bundler'])
+        start(hook, repo, args)
       else
         puts 'I can\'t figure out what to run - specify either path or script to give me a hint...'
       end
@@ -84,9 +86,9 @@ module GitHooks
         if path = repo.config['script'] # rubocop:disable AssignmentInCondition
           fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to script #{path}. Detach to continue."
         end
-        repo.config.set('script', script)
+        repo.config.set('script', entry_path)
       else
-        fail ArgumentError, "Provided path '#{repo_path}' is neither a directory nor an executable file."
+        fail ArgumentError, "Provided path '#{entry_path}' is neither a directory nor an executable file."
       end
 
       gitrunner = SystemUtils.which('githooks-runner')
@@ -139,7 +141,7 @@ module GitHooks
       if (executables = repo.config.pre_run_execute).size > 0
         puts 'PreRun Executables (in execution order):'
         executables.each do |exe|
-          puts "\t#{exe}"
+          puts "  #{exe}"
         end
         puts
       end
@@ -147,8 +149,11 @@ module GitHooks
       if script
         puts 'Main Test Script:'
         puts "  #{script}"
-      elsif libpath
-        puts 'Main Sections/Tests (in execution order):'
+        puts
+      end
+
+      if libpath
+        puts 'Main Testing Library with Tests (in execution order):'
         puts '  Tests loaded from:'
         puts "    #{libpath}"
         puts
@@ -171,12 +176,14 @@ module GitHooks
             end
           end
         end
+
+        puts
       end
 
       if (executables = repo.config.post_run_execute).size > 0
         puts 'PostRun Executables (in execution order):'
         executables.each do |exe|
-          puts "\t#{exe}"
+          puts "  #{exe}"
         end
         puts
       end
@@ -206,10 +213,12 @@ module GitHooks
     end
     module_function :run_externals
 
-    def start(phase = 'pre-commit', repo_path = nil) # rubocop:disable MethodLength
-      active_hook    = Hook.phases[phase].repository_path(repo_path)
-      success        = active_hook.run
+    def start(phase = 'pre-commit', repo_path = nil, args = []) # rubocop:disable MethodLength
+      active_hook = Hook.phases[phase]
+      active_hook.repository_path = repo_path
+      active_hook.args = args
 
+      success        = active_hook.run
       section_length = active_hook.sections.max { |s| s.title.length }
       sections       = active_hook.sections.select { |section| !section.actions.empty? }
 

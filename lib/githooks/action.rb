@@ -92,10 +92,6 @@ module GitHooks
 
     # DSL Methods
 
-    def args
-      ARGV.dup
-    end
-
     def limit(what)
       Repository::Limiter.new(what).tap do |limiter|
         @limiters << limiter
@@ -110,8 +106,12 @@ module GitHooks
       @on = ->() { block.call manifest }
     end
 
-    def on(&block)
-      @on = ->() { block.call }
+    def on_argv(&block)
+      @on = ->() { block.call section.hook.args }
+    end
+
+    def on(*args, &block)
+      @on = ->() { block.call(*args) }
     end
 
   private

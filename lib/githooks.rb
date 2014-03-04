@@ -38,7 +38,7 @@ module GitHooks
   autoload :TerminalColors,    'githooks/terminal_colors'
 
   class << self
-    attr_reader :debug, :verbose
+    attr_reader :debug, :verbose, :ignore_script
 
     def debug=(value)
       @debug = !!value
@@ -46,6 +46,10 @@ module GitHooks
 
     def verbose=(value)
       @verbose = !!value
+    end
+
+    def ignore_script=(value)
+      @ignore_script = !!value
     end
   end
 
@@ -56,4 +60,12 @@ module GitHooks
   SCRIPT_PATH = Pathname.new($0)
   SCRIPT_NAME = SCRIPT_PATH.basename.to_s
   HOOK_NAME   = SCRIPT_NAME.to_s
+
+  if ARGV.include? '--ignore-script'
+    ARGV.delete('--ignore-script')
+    self.ignore_script = true
+  end
+
+  self.debug = !!ENV['GITHOOKS_DEBUG']
+  self.verbose = !!ENV['GITHOOKS_VERBOSE']
 end

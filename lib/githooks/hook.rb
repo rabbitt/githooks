@@ -62,19 +62,20 @@ module GitHooks
       end
     end
 
-    attr_reader :sections, :phase, :repository
+    attr_reader :sections, :phase, :repository, :repository_path
+    attr_accessor :args
 
     def initialize(phase)
-      @phase      = phase
-      @sections   = []
-      @commands   = []
-      repository_path(Dir.getwd)
+      @phase    = phase
+      @sections = []
+      @commands = []
+      @args     = []
+
+      repository_path = Dir.getwd # rubocop:disable UselessAssignment
     end
 
-    def repository_path(path)
-      return self if path.nil?
+    def repository_path=(path)
       @repository = Repository.new(path)
-      self
     end
 
     def manifest
