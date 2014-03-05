@@ -215,9 +215,13 @@ module GitHooks
 
     def start(phase = 'pre-commit', repo_path = nil, args = []) # rubocop:disable MethodLength
       puts "PHASE: #{phase}" if GitHooks.debug
-      active_hook = Hook.phases[phase]
-      active_hook.repository_path = repo_path
-      active_hook.args = args
+
+      if active_hook = Hook.phases[phase]
+        active_hook.repository_path = repo_path
+        active_hook.args = args
+      else
+        fail Error::InvalidPhase, "Hook '#{phase}' is not defined - have you registered any tests for this hook yet?"
+      end
 
       success        = active_hook.run
       section_length = active_hook.sections.max { |s| s.title.length }
@@ -255,9 +259,9 @@ module GitHooks
 
     def load_tests(path, skip_bundler = false) # rubocop:disable MethodLength
       hooks_root = Pathname.new(path).realpath
-      hooks_libs = hooks_root + 'lib'
+      hooks_path = hooks_root + 'hooks'
+      hooks_libs = hooks_root + 'libs'
       gemfile    = hooks_root + 'Gemfile'
-      ENV['BUNDLE_GEMFILE'] = (hooks_root + 'Gemfile').to_s
 
       if gemfile.exist? && !skip_bundler
         puts "loading Gemfile from: #{gemfile}" if GitHooks.verbose
@@ -285,8 +289,8 @@ module GitHooks
         end
       end
 
-      $:.unshift hooks_libs.to_s
-      SystemUtils.with_path(hooks_libs) { Dir['**/*.rb'] }.each do |lib|
+      $LOAD_PATH.unshift hooks_libs.to_s
+      Dir["#{hooks_path}/**/*.rb"].each do |lib|
         lib.gsub!('.rb', '')
         puts "Loading: #{lib}" if GitHooks.verbose
         require lib

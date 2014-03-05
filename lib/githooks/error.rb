@@ -5,5 +5,6 @@ module GitHooks
     class TestsFailed < GitHooks::Error; end
     class AlreadyAttached < GitHooks::Error; end
     class NotAttached < GitHooks::Error; end
+    class InvalidPhase < GitHooks::Error; end
   end
 end
