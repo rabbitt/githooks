@@ -25,10 +25,8 @@ module GitHooks
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
 
-        if options['script'].nil? && options['path'].nil?
-          fail ArgumentError, %q|Neither 'path' nor 'script' were specified - please provide one or the other.|
-        elsif options['script'] && options['path']
-          fail ArgumentError, %q|Both 'script' and 'path' have been specified. Choose one or the other.|
+        unless options['script'] || options['path']
+          fail ArgumentError, %q|Neither 'path' nor 'script' were specified - please provide at least one.|
         end
 
         Runner.attach(options['repo'], options['hooks'], options['script'] || options['path'])
