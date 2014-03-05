@@ -263,7 +263,17 @@ module GitHooks
         puts "loading Gemfile from: #{gemfile}" if GitHooks.verbose
 
         begin
-          require 'bundler'
+          ENV['BUNDLE_GEMFILE'] = (hooks_root + 'Gemfile').to_s
+
+          # stupid RVM polluting my environment without asking via it's
+          # executable-hooks gem preloading bundler. hence the following ...
+          if defined? Bundler
+            [:@settings, :@bundle_path, :@configured, :@definition, :@load].each do |var|
+              Bundler.instance_variable_set(var, nil)
+            end
+          else
+            require 'bundler'
+          end
           Bundler.require(:default)
         rescue LoadError
           puts 'Unable to load bundler - please make sure it\'s installed.'

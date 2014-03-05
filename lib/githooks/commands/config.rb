@@ -1,4 +1,3 @@
-require 'awesome_print'
 module GitHooks
   module CLI
     class Config < Thor
