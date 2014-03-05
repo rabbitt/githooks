@@ -94,7 +94,7 @@ module GitHooks
           end
         end
 
-        pp result if GitHooks.debug
+        puts result.inspect if GitHooks.debug
 
         block_given? ? yield(result) : result
       end
