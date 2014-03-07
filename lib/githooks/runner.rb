@@ -20,6 +20,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require 'fileutils'
 require 'githooks/terminal_colors'
 require 'shellwords'
+require 'thor'
 
 module GitHooks
   module Runner
@@ -30,12 +31,13 @@ module GitHooks
     MARK_UNKNOWN = '?'
 
     def run(options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
-      repo    = options['repo']   || Repository.root_path
-      script  = options['script'] || Repository.instance(repo).config.script
-      libpath = options['path']   || Repository.instance(repo).config.path
-      args    = options['args']   || []
+      # unfreeze options
+      options = Thor::CoreExt::HashWithIndifferentAccess.new(options)
 
-      hook    = GitHooks::HOOK_NAME.to_s == 'githooks' ? 'pre-commit' : GitHooks::HOOK_NAME
+      repo    = options['repo']   ||= Repository.root_path
+      script  = options['script'] ||= Repository.instance(repo).config.script
+      libpath = options['path']   ||= Repository.instance(repo).config.path
+      args    = options['args']   ||= []
 
       GitHooks.verbose = !!ENV['GITHOOKS_VERBOSE']
       GitHooks.debug   = !!ENV['GITHOOKS_DEBUG']
@@ -52,7 +54,7 @@ module GitHooks
         exec(command)
       elsif libpath
         load_tests(libpath, options['skip-bundler'])
-        start(hook, repo, args)
+        start(options)
       else
         puts 'I can\'t figure out what to run - specify either path or script to give me a hint...'
       end
@@ -213,12 +215,17 @@ module GitHooks
     end
     module_function :run_externals
 
-    def start(phase = 'pre-commit', repo_path = nil, args = []) # rubocop:disable MethodLength
+    def start(options = {}) # rubocop:disable MethodLength
+      phase = GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
+      puts "OPTIONS: #{options.inspect}"
+
       if active_hook = Hook.phases[phase]
-        active_hook.repository_path = repo_path
-        active_hook.args = args
+        active_hook.args            = options.delete(:args)
+        active_hook.unstaged        = options.delete(:unstaged)
+        active_hook.untracked       = options.delete(:untracked)
+        active_hook.repository_path = options.delete(:repo)
       else
         fail Error::InvalidPhase, "Hook '#{phase}' is not defined - have you registered any tests for this hook yet?"
       end

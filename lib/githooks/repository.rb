@@ -23,21 +23,23 @@ require 'open3'
 
 module GitHooks
   class Repository
-    autoload :Config,  'githooks/repository/config'
-    autoload :File,    'githooks/repository/file'
-    autoload :Limiter, 'githooks/repository/limiter'
+    autoload :Config,         'githooks/repository/config'
+    autoload :File,           'githooks/repository/file'
+    autoload :Limiter,        'githooks/repository/limiter'
+    autoload :DiffIndexEntry, 'githooks/repository/diff_index_entry'
 
     CHANGE_TYPE_SYMBOLS = {
-      added:    'A', copied:   'C',
-      deleted:  'D', modified: 'M',
-      renamed:  'R', retyped:  'T',
-      unknown:  'U', unmerged: 'X',
-      broken:   'B', any:      '*'
-    }.freeze
+      added:     'A', copied:    'C',
+      deleted:   'D', modified:  'M',
+      renamed:   'R', retyped:   'T',
+      unknown:   'U', unmerged:  'X',
+      broken:    'B', untracked: '?',
+      any:       '*'
+    }.freeze unless defined? CHANGE_TYPE_SYMBOLS
 
-    CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze
+    CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze unless defined? CHANGE_TYPES
 
-    DEFAULT_DIFF_INDEX_OPTIONS = { staged: true, ref: 'HEAD' }
+    DEFAULT_DIFF_INDEX_OPTIONS = { staged: true, ref: 'HEAD' } unless defined? DEFAULT_DIFF_INDEX_OPTIONS
 
     @__instance__ = {}
     @__mutex__    = Mutex.new
@@ -68,12 +70,12 @@ module GitHooks
       @config ||= Repository::Config.new(root_path)
     end
 
-    def command(*args)
+    def git_command(*args)
       git.execute(*args.flatten)
     end
 
     def get_root_path(path)
-      command('rev-parse', '--show-toplevel', path: path).tap do |result|
+      git_command('rev-parse', '--show-toplevel', path: path).tap do |result|
         unless result.status.success? && result.output !~ /not a git repository/i
           fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
         end
@@ -81,42 +83,52 @@ module GitHooks
     end
 
     def stash
-      command(%w( stash -q --keep-index -a)).status.success?
+      git_command(%w( stash -q --keep-index -a)).status.success?
     end
 
     def unstash
-      command(%w(stash pop -q)).status.success?
-    end
-
-    def use_unstaged?
-      ENV['UNSTAGED']
+      git_command(%w(stash pop -q)).status.success?
     end
 
     def manifest(options = {})
-      unstaged = options.delete(:unstaged) || use_unstaged?
-      parse_diff_index_data(diff_index(staged: !unstaged, ref: 'HEAD'))
+      ref       = options.delete(:ref) || 'HEAD'
+      unstaged  = options.delete(:unstaged)
+      untracked = options.delete(:untracked)
+
+      return staged_manifest(ref: ref) unless unstaged || untracked
+
+      [].tap do |files|
+        files.push(*unstaged_manifest(ref: ref)) if unstaged
+        files.push(*untracked_manifest) if untracked
+      end
     end
 
-    def staged_manifest
-      manifest(unstaged: false)
+    def staged_manifest(options = {})
+      diff_index(options.merge(unstaged: false))
     end
     alias_method :commit_manifest, :staged_manifest
 
-    def unstaged_manifest
-      manifest(unstaged: true)
+    def unstaged_manifest(options = {})
+      diff_index(options.merge(unstaged: true))
     end
+
+    def untracked_manifest
+      files = git_command('ls-files', '--others', '--exclude-standard').output.strip.split(/\s*\n\s*/)
+      files.collect { |path| DiffIndexEntry.from_file_path(path).to_repo_file }
+    end
+
+  private
 
     def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
       cmd = %w(diff-index -C -M -B)
-      cmd << '--cached' if options[:staged]
+      cmd << '--cached' unless options[:unstaged]
       cmd << options.delete(:ref) || 'HEAD'
 
-      command(*cmd).output.strip
+      raw_output = git_command(*cmd).output.strip
+      raw_output.split(/\n/).collect { |data| DiffIndexEntry.new(data).to_repo_file }
     end
-
-  private
 
     def git
       @git ||= SystemUtils::Command.new('git')
@@ -135,10 +147,6 @@ module GitHooks
     def run_while_stashed(cmd)
       while_stashed { system(cmd) }
       $? == 0
-    end
-
-    def parse_diff_index_data(index)
-      index.split(/\n+/).collect { |data| Repository::File.new(data) }
     end
   end
 end

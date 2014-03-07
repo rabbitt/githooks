@@ -18,28 +18,45 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 require 'ostruct'
+require 'delegate'
+
+# allow for reloading of class
+unless defined? DiffIndexEntryDelegateClass
+  DiffIndexEntryDelegateClass = DelegateClass(GitHooks::Repository::DiffIndexEntry)
+end
 
 module GitHooks
-  class Repository::File
-    attr_reader :from, :to, :type, :score, :path, :name
+  class Repository::File < DiffIndexEntryDelegateClass
+    def initialize(entry)
+      unless entry.is_a? Repository::DiffIndexEntry
+        fail ArgumentError, "Expected a Repository::DiffIndexEntry but got a '#{entry.class.name}'"
+      end
+      @file = entry
+    end
 
-    def initialize(data)
-      orig_mode, new_mode, orig_sha, new_sha, change_type, file_path, rename_path = data.split(/\s+/)
-      change_type, score = change_type.split(/(\d+)/)
-      path = rename_path || file_path
+    def __getobj__ # rubocop:disable TrivialAccessors
+      @file
+    end
 
-      @path  = Pathname.new(path)
-      @name  = @path.basename.to_s
-      @from  = OpenStruct.new(mode: orig_mode[1..-1].to_i, sha: orig_sha, path: file_path)
-      @to    = OpenStruct.new(mode: new_mode.to_i, sha: new_sha, path: path)
-      @type  = Repository::CHANGE_TYPES[change_type]
-      @score = score.to_i
+    def inspect
+      attributes = [:name, :path, :type, :mode, :sha, :score].collect do |name|
+        "#{name}=#{attribute_value(name).inspect}"
+      end
+      "#<#{self.class.name} #{attributes.join(' ')} >"
+    end
+
+    def path
+      to.path || from.path
+    end
+
+    def name
+      path.basename.to_s
     end
 
     # rubocop:disable CyclomaticComplexity
     def attribute_value(attribute)
       case attribute
-        when :name then name.to_s
+        when :name then name
         when :path then path.to_s
         when :type then type
         when :mode then to.mode
@@ -68,14 +85,14 @@ module GitHooks
     def fd
       case type
         when :deleted, :deletion then nil
-        else @path.open
+        else path.open
       end
     end
 
     def realpath
       case type
-        when :deleted, :deletion then @path
-        else @path.realpath
+        when :deleted, :deletion then path
+        else path.realpath
       end
     end
 

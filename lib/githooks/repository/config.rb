@@ -84,7 +84,7 @@ module GitHooks
       end
 
       option = "githooks.#{repo}.#{option}"
-      command(global ? '--global' : '--local', var_type, add_type, option, value, path: repo).tap do |result|
+      git_command(global ? '--global' : '--local', var_type, add_type, option, value, path: repo).tap do |result|
         puts "Added option #{option} with value #{value}" if result.status.success?
       end
     end
@@ -93,7 +93,7 @@ module GitHooks
       repo   = options.delete(:repo_path) || repo_path
       global = (opt = options.delete(:global)).nil? ? false : opt
       option = "githooks.#{repo}"
-      command(global ? '--global' : '--local', '--remove-section', option, path: repo)
+      git_command(global ? '--global' : '--local', '--remove-section', option, path: repo)
     end
 
     def unset(option, *args)
@@ -109,9 +109,9 @@ module GitHooks
       value_regex = args.first
 
       if options.delete(:all) || value_regex.nil?
-        command(global ? '--global' : '--local', '--unset-all', option, path: repo)
+        git_command(global ? '--global' : '--local', '--unset-all', option, path: repo)
       else
-        command(global ? '--global' : '--local', '--unset', option, value_regex, path: repo)
+        git_command(global ? '--global' : '--local', '--unset', option, value_regex, path: repo)
       end.tap do |result|
         puts "Unset option #{option.git_option_path_split.last}" if result.status.success?
       end
@@ -132,7 +132,7 @@ module GitHooks
       repo   = options.delete(:repo_path) || repo_path
       global = (opt = options.delete(:global)).nil? ? false : opt
 
-      config_list = command('--list', global ? '--global' : '--local', path: repo).output.split(/\n/)
+      config_list = git_command('--list', global ? '--global' : '--local', path: repo).output.split(/\n/)
       config_list.inject({}) do |hash, line|
         key, value = line.split(/\s*=\s*/)
         key_parts = key.git_option_path_split
@@ -159,9 +159,9 @@ module GitHooks
       @repository.root_path
     end
 
-    def command(*args)
+    def git_command(*args)
       args = ['config', *args].flatten
-      @repository.command(*args)
+      @repository.git_command(*args)
     end
 
     def git

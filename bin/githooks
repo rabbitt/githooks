@@ -1,10 +1,12 @@
 #!/usr/bin/env ruby
 
 require 'githooks'
+
 begin
   GitHooks::CLI::Base.start(ARGV)
 rescue GitHooks::Error => e
   puts e.message
   exit 1
 end
+
 exit 0

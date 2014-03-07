@@ -32,8 +32,17 @@ module GitHooks
     alias_method :to, :only
 
     def limit(files)
-      files.select! { |file| match_file(file, @only) }
+      files.select! do |file|
+        match_file(file, @only).tap do |result|
+          if GitHooks.debug?
+            result = (result ? 'success' : 'failure')
+            puts "  #{file.path.to_s} (#{file.attribute_value(@type).inspect}) was a #{result}"
+          end
+        end
+      end
     end
+
+  private
 
     def match_file(file, match_value)
       if match_value.is_a? Array

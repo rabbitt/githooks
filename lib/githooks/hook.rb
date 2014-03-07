@@ -63,13 +63,15 @@ module GitHooks
     end
 
     attr_reader :sections, :phase, :repository, :repository_path
-    attr_accessor :args
+    attr_accessor :args, :unstaged, :untracked
 
     def initialize(phase)
-      @phase    = phase
-      @sections = []
-      @commands = []
-      @args     = []
+      @phase     = phase
+      @sections  = []
+      @commands  = []
+      @args      = []
+      @unstaged  = false
+      @untracked = false
 
       repository_path = Dir.getwd # rubocop:disable UselessAssignment
     end
@@ -78,8 +80,8 @@ module GitHooks
       @repository = Repository.new(path)
     end
 
-    def manifest
-      @manifest ||= Manifest.new(@repository.manifest)
+    def manifest(options = {})
+      @manifest ||= Manifest.new(self)
     end
 
     def run
@@ -126,13 +128,30 @@ module GitHooks
     end
 
     class Manifest
-      def initialize(files)
-        @files = files
+      attr_reader :hook
+      private :hook
+
+      def initialize(hook)
+        @hook = hook
+      end
+
+      def repo
+        @hook.repository
+      end
+
+      def manifest
+        @files ||= repo.manifest(
+          untracked: hook.untracked,
+          unstaged:  hook.unstaged
+        )
       end
 
       def filter(limiters)
-        @files.dup.tap do |files|
-          limiters.each { |limiter| limiter.limit(files) }
+        manifest.dup.tap do |files|
+          limiters.each do |limiter|
+            puts "Limiter [#{limiter.type}] -> (#{limiter.only.inspect}) match against: " if GitHooks.debug?
+            limiter.limit(files)
+          end
         end
       end
     end

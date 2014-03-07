@@ -40,8 +40,16 @@ module GitHooks
   class << self
     attr_reader :debug, :verbose, :ignore_script
 
+    def debug?
+      !!ENV['GITHOOKS_DEBUG'] || ARGV.include?('--debug') || debug
+    end
+
     def debug=(value)
       @debug = !!value
+    end
+
+    def verbose?
+      !!ENV['GITHOOKS_VERBOSE'] || ARGV.include?('--verbose') || verbose
     end
 
     def verbose=(value)
@@ -50,6 +58,13 @@ module GitHooks
 
     def ignore_script=(value)
       @ignore_script = !!value
+    end
+
+    def hook_name
+      case GitHooks::HOOK_NAME.to_s
+        when 'githooks', 'irb', '', nil then 'pre-commit'
+        else GitHooks::HOOK_NAME
+      end
     end
   end
 
@@ -65,7 +80,4 @@ module GitHooks
     ARGV.delete('--ignore-script')
     self.ignore_script = true
   end
-
-  self.debug = !!ENV['GITHOOKS_DEBUG']
-  self.verbose = !!ENV['GITHOOKS_VERBOSE']
 end

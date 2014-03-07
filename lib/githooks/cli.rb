@@ -64,6 +64,7 @@ module GitHooks
 
       desc :exec, 'Runs the selected hooks, passing the argument list to the script'
       method_option :unstaged, type: :boolean, desc: 'test unstaged files', default: false
+      method_option :untracked, type: :boolean, desc: 'test unstaged files', default: false
       method_option :script, type: :string, desc: 'Path to script to run', default: nil
       method_option :path, type: :string, desc: 'Path to library of tests', default: nil
       method_option :repo, type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
@@ -75,8 +76,13 @@ module GitHooks
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
 
-        ENV['UNSTAGED'] = '1' if options['unstaged']
-        GitHooks::Runner.run(options)
+        opts = (options).dup
+        if opts['untracked'] && !opts['unstaged']
+          warn %q|--untracked requires --unstaged. Dropping option --untracked...|
+          opts['untracked'] = false
+        end
+
+        GitHooks::Runner.run(opts)
       end
 
       desc :config, 'manage githooks configuration'
