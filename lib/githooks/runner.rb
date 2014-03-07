@@ -219,8 +219,6 @@ module GitHooks
       phase = GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
-      puts "OPTIONS: #{options.inspect}"
-
       if active_hook = Hook.phases[phase]
         active_hook.args            = options.delete(:args)
         active_hook.unstaged        = options.delete(:unstaged)
