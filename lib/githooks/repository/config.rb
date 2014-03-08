@@ -64,8 +64,7 @@ module GitHooks
         errors = []
         errors << 'path must be a real location' unless new_path.exist?
         errors << 'path must be a directory' unless new_path.directory?
-        errors << 'path must have a Gemfile in it' unless (new_path + 'Gemfile').exist?
-        errors << 'path must have a lib directory in it' unless (new_path + 'lib').exist?
+        errors << 'path must have a hooks directory in it' unless (new_path + 'hooks').exist?
 
         if errors.size > 0
           puts "Unable to change githooks path for [#{repo}]:"
