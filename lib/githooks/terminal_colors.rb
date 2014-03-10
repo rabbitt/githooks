@@ -33,7 +33,7 @@ module GitHooks
     }
 
     def color(name)
-      # return '' unless $stdout.tty? && $stderr.tty?
+      return '' unless $stdout.tty? && $stderr.tty?
       light = !!name.match(/(light|bright)/) ? '1' : '0'
       blink = !!name.match(/blink/) ? ';5' : ''
 

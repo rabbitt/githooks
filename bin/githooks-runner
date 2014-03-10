@@ -6,7 +6,10 @@ end
 require 'githooks'
 
 begin
-  GitHooks::Runner.run 'args' => ARGV
+  GitHooks::Runner.run(
+    'args' => ARGV,
+    'hook' => ENV['GITHOOKS_HOOK']
+  )
 rescue GitHooks::Error => e
   puts e.message
   exit 1

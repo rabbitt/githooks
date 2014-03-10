@@ -224,7 +224,7 @@ module GitHooks
     module_function :run_externals
 
     def start(options = {}) # rubocop:disable MethodLength
-      phase = GitHooks.hook_name || 'pre-commit'
+      phase = options[:hook] || GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
       if active_hook = Hook.phases[phase]
