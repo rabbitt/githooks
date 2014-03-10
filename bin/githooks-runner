@@ -1,6 +1,10 @@
 #!/usr/bin/env ruby
 
+if ENV['GITHOOKS_DEV']
+  $:.unshift(File.expand_path(File.join(File.expand_path(__FILE__), '/../../lib')))
+end
 require 'githooks'
+
 begin
   GitHooks::Runner.run 'args' => ARGV
 rescue GitHooks::Error => e

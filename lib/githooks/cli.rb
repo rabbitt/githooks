@@ -8,10 +8,11 @@ module GitHooks
       class_option :verbose, type: :boolean, desc: 'verbose output', default: false
       class_option :debug, type: :boolean, desc: 'debug output', default: false
 
-      # githook attach [--hook <hook1,hookN>] [--script <path> | --path <path>]
+      # githook attach [--hook <hook1,hookN>] [--script <path> | --path <path>] [--bootstrap <path>]
       #   --  attaches the listed hooks (or all if none specified) to the githook runner
       #       optionally sets the script XOR path
       desc :attach, 'attach githooks to repository hooks'
+      method_option :bootstrap, type: :string, desc: 'Path to bootstrap script', default: nil
       method_option :script, type: :string, desc: 'Path to script to run', default: nil
       method_option :path, type: :string, desc: 'Path to library of tests', default: nil
       method_option :repo, type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
@@ -29,7 +30,7 @@ module GitHooks
           fail ArgumentError, %q|Neither 'path' nor 'script' were specified - please provide at least one.|
         end
 
-        Runner.attach(options['repo'], options['hooks'], options['script'] || options['path'])
+        Runner.attach(options)
       end
 
       # githook dettach [--hook <hook1,hookN>]

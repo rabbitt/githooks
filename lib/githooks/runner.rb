@@ -60,7 +60,7 @@ module GitHooks
       end
 
       if options['skip-post']
-        puts 'Skipping PreRun Executables'
+        puts 'Skipping PostRun Executables'
       else
         run_externals('post-run-execute', repo, args)
       end
@@ -70,12 +70,19 @@ module GitHooks
     end
     module_function :run
 
-    def attach(repo_path, hook_phases, entry_path) # rubocop:disable CyclomaticComplexity, MethodLength
-      repo_path   ||= Repository.root_path
-      repo_hooks    = Pathname.new(repo_path) + '.git' + 'hooks'
+    def attach(options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
+      repo_path  = options[:repo] || Repository.root_path
+      repo_path  = Pathname.new(repo_path) unless repo_path.nil?
+      repo_hooks = repo_path + '.git' + 'hooks'
+
+      entry_path = options[:script] || options[:path]
+
+      hook_phases = options[:hooks]
       hook_phases ||= Hook::VALID_PHASES
 
-      entry_path = Pathname.new(entry_path).realdirpath
+      bootstrapper = options[:bootstrap]
+      bootstrapper = Pathname.new(bootstrapper).realpath unless bootstrapper.nil?
+      entry_path   = Pathname.new(entry_path).realdirpath
 
       repo = Repository.instance(repo_path)
 
@@ -93,7 +100,8 @@ module GitHooks
         fail ArgumentError, "Provided path '#{entry_path}' is neither a directory nor an executable file."
       end
 
-      gitrunner = SystemUtils.which('githooks-runner')
+      gitrunner = bootstrapper
+      gitrunner ||= SystemUtils.which('githooks-runner')
       gitrunner ||= (GitHooks::BIN_PATH + 'githooks-runner').realpath
 
       hook_phases.each do |hook|
