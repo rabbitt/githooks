@@ -67,16 +67,29 @@ module GitHooks
       success? ? color_bright_green(text) : color_bright_red(text)
     end
 
-    def run
+    def run # rubocop:disable MethodLength
       warnings, errors = StringIO.new, StringIO.new
 
       begin
         running!
         $stdout, $stderr = warnings, errors
         @success &= @on.call
+      rescue => error
+        hooks_files = error.backtrace.select { |line|
+          line =~ %r{/hooks/}
+        }.collect { |line|
+          line.split(':')[0..1].join(':')
+        }
+
+        errors.puts "Exception thrown during action call: #{error.class.name}: #{error.message}"
+        errors.puts "  -> in hook file:line, #{hooks_files.join("\n\t")}" unless hooks_files.empty?
+        @success = false
       ensure
-        @errors = errors.tap { |e| e.rewind }.read.split(/\n/)
-        @warnings = warnings.tap { |w| w.rewind }.read.split(/\n/)
+        @errors, @warnings = [errors, warnings].collect do |io|
+          io.rewind
+          io.read.split(/\n/)
+        end
+
         $stdout, $stderr = STDOUT, STDERR
         finished!
       end
