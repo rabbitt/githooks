@@ -21,6 +21,12 @@ BlockComments:
 Encoding:
   Enabled: false
 
+MultilineBlockChain:
+  Enabled: false
+
+Blocks:
+  Enabled: false
+
 RegexpLiteral:
   Enabled: false
 
