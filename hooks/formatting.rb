@@ -5,7 +5,7 @@ RUBY_FILE_REGEXP = %r{^((app|lib)/.+\.rb|bin/.+)$}.freeze
 GitHooks::Hook.register 'pre-commit' do
   commands 'scss-lint', :ruby, :rubocop
 
-  section 'Standards' do
+    section 'Standards' do
     action 'Validate Ruby Syntax' do
       limit(:type).to :modified, :added, :untracked
       limit(:path).to RUBY_FILE_REGEXP
@@ -51,5 +51,3 @@ GitHooks::Hook.register 'pre-commit' do
     end
   end
 end
-
-
