@@ -6,13 +6,14 @@ module GitHooks
       # class_option :verbose, type: :boolean, desc: 'verbose output', default: false
       # class_option :debug, type: :boolean, desc: 'debug output', default: false
 
-      class_option :global, type: :boolean, desc: 'use global config', default: false
+      class_option :global, aliases: '-G', type: :boolean, desc: 'use global config', default: false
       class_option :hooks, { # rubocop:disable BracesAroundHashParameters
         type: :array,
         desc: 'choose specific hooks to affect',
         enum: %w( pre-commit commit-msg )
       }
       class_option :repo, { # rubocop:disable BracesAroundHashParameters
+        aliases: '-r',
         type: :string,
         desc: 'Repository path to look up configuration values for.'
       }
@@ -43,6 +44,7 @@ module GitHooks
 
       desc :set, 'Sets the configuration value '
       method_option :'overwrite-all', { # rubocop:disable BracesAroundHashParameters
+        aliases: '-O',
         type: :boolean,
         desc: 'overwrite all existing values.',
         default: false

@@ -41,7 +41,10 @@ module GitHooks
     attr_reader :debug, :verbose, :ignore_script
 
     def debug?
-      !!ENV['GITHOOKS_DEBUG'] || ARGV.include?('--debug') || debug
+      return true if ENV['GITHOOKS_DEBUG']
+      return true if ARGV.include?('--debug')
+      return true if ARGV.include?('-d')
+      debug
     end
 
     def debug=(value)
@@ -49,7 +52,10 @@ module GitHooks
     end
 
     def verbose?
-      !!ENV['GITHOOKS_VERBOSE'] || ARGV.include?('--verbose') || verbose
+      return true if ENV['GITHOOKS_VERBOSE']
+      return true if ARGV.include?('--verbose')
+      return true if ARGV.include?('-v')
+      verbose
     end
 
     def verbose=(value)
