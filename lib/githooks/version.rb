@@ -18,5 +18,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module GitHooks
-  VERSION = '1.2.3'
+  VERSION = '1.2.4'
 end
