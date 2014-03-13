@@ -75,14 +75,16 @@ module GitHooks
         $stdout, $stderr = warnings, errors
         @success &= @on.call
       rescue => error
-        hooks_files = error.backtrace.select { |line|
-          line =~ %r{/hooks/}
-        }.collect { |line|
-          line.split(':')[0..1].join(':')
-        }
-
         errors.puts "Exception thrown during action call: #{error.class.name}: #{error.message}"
-        errors.puts "  -> in hook file:line, #{hooks_files.join("\n\t")}" unless hooks_files.empty?
+
+        if !GitHooks.debug?
+          hooks_files = error.backtrace.select! { |line| line =~ %r{/hooks/} }
+          hooks_files.collect! { |line| line.split(':')[0..1].join(':') }
+          errors.puts "  -> in hook file:line, #{hooks_files.join("\n\t")}" unless hooks_files.empty?
+        else
+          errors.puts "\t#{error.backtrace.join("\n\t")}"
+        end
+
         @success = false
       ensure
         @errors, @warnings = [errors, warnings].collect do |io|
