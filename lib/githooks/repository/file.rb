@@ -105,7 +105,11 @@ module GitHooks
     end
 
     def grep(regexp)
-      lines(true).select_with_index { |line| line =~ regexp }
+      lines(true).select_with_index { |line|
+        line =~ regexp
+      }.collect { |line, num|
+        [num + 1, line] # line numbers start from 1, not 0
+      }
     end
 
     def contents
