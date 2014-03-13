@@ -63,7 +63,7 @@ module GitHooks
       #   --  runs the selected hooks (or pre-commit, if none specified) passing
       #       the argument list to the script
 
-      desc :exec, 'Runs the selected hooks, passing the argument list to the script'
+      desc :execute, 'Runs the selected hooks, passing the argument list to the script'
       method_option :unstaged, type: :boolean, desc: 'test unstaged files', default: false
       method_option :untracked, type: :boolean, desc: 'test unstaged files', default: false
       method_option :script, type: :string, desc: 'Path to script to run', default: nil
@@ -73,7 +73,7 @@ module GitHooks
       method_option :'skip-post', type: :boolean, desc: 'Skip PostRun Scripts', default: false
       method_option :'skip-bundler', type: :boolean, desc: %Q|Don't load bundler gemfile|, default: false
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
-      def exec(*args)
+      def execute(*args)
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
 
