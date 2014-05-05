@@ -11,7 +11,7 @@ module GitHooks
       (?<new_sha>[a-f\d]+)\s
       (?<change_type>.)
       (?:(?<score>\d+)?)\s
-      (?<file_path>\S+)
+      (?<file_path>\S+)\s?
       (?<rename_path>\S+)?
     }xi unless defined? DIFF_STRUCTURE_REGEXP
 
