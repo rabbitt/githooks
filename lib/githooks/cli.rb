@@ -59,13 +59,14 @@ module GitHooks
         Runner.list(options['repo'])
       end
 
-      # githooks run [--hook <hook1,hookN>] [--[un]staged] [--args -- one two three ... fifty]
+      # githooks execute [--[no-]staged] [--tracked] [--untracked] [--args -- one two three ...]
       #   --  runs the selected hooks (or pre-commit, if none specified) passing
       #       the argument list to the script
 
       desc :execute, 'Runs the selected hooks, passing the argument list to the script'
-      method_option :unstaged, aliases: '-U', type: :boolean, desc: 'test unstaged files', default: false
-      method_option :untracked, aliases: '-T', type: :boolean, desc: 'test unstaged files', default: false
+      method_option :staged, aliases: '-S', type: :boolean, desc: 'test staged files', default: nil
+      method_option :tracked, aliases: '-A', type: :boolean, desc: 'test all tracked files', default: false
+      method_option :untracked, aliases: '-T', type: :boolean, desc: 'test untracked files', default: false
       method_option :script, aliases: '-s', type: :string, desc: 'Path to script to run', default: nil
       method_option :path, aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
       method_option :repo, aliases: '-r', type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
@@ -78,10 +79,18 @@ module GitHooks
         GitHooks.debug = !!options['debug']
 
         opts = (options).dup
-        if opts['untracked'] && !opts['unstaged']
-          warn %q|--untracked requires --unstaged. Dropping option --untracked...|
-          opts['untracked'] = false
+
+        if opts['staged']
+          if opts['tracked']
+            warn %q|--tracked conflicts with --staged. Dropping --tracked...|
+            opts['tracked'] = false
+          elsif opts['untracked']
+            warn %q|--untracked conflicts with --staged. Dropping --untracked...|
+            opts['untracked'] = false
+          end
         end
+
+        opts['staged'] = !(opts['tracked'] || opts['untracked']) if opts['staged'].nil?
 
         GitHooks::Runner.run(opts)
       end

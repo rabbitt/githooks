@@ -49,7 +49,7 @@ module GitHooks
       end
 
       if script && !(options['ignore-script'] || GitHooks.ignore_script)
-        command = "#{script} #{Pathname.new($0).to_s} #{Shellwords.join(ARGV)};"
+        command = "#{script} #{Pathname.new($0)} #{Shellwords.join(ARGV)};"
         puts "Kernel#exec(#{command.inspect})" if GitHooks.verbose
         exec(command)
       elsif libpath
@@ -106,7 +106,7 @@ module GitHooks
 
       hook_phases.each do |hook|
         hook = (repo_hooks + hook).to_s
-        puts "Linking #{gitrunner.to_s} -> #{hook}" if GitHooks.verbose
+        puts "Linking #{gitrunner} -> #{hook}" if GitHooks.verbose
         FileUtils.ln_sf gitrunner.to_s, hook
       end
     end
@@ -120,10 +120,9 @@ module GitHooks
       repo = Repository.instance(repo_path)
 
       hook_phases.each do |hook|
-        if (repo_hook = repo_hooks + hook).symlink?
-          puts "Removing hook '#{hook}' from repository at: #{repo_path}" if GitHooks.verbose
-          FileUtils.rm_f repo_hook
-        end
+        next unless (repo_hook = (repo_hooks + hook)).symlink?
+        puts "Removing hook '#{hook}' from repository at: #{repo_path}" if GitHooks.verbose
+        FileUtils.rm_f repo_hook
       end
 
       active_hooks = Hook::VALID_PHASES.select { |hook| (repo_hooks + hook).exist? }
@@ -137,7 +136,7 @@ module GitHooks
     end
     module_function :detach
 
-    def list(repo_path)
+    def list(repo_path) # rubocop:disable Style/CyclomaticComplexity, Style/MethodLength
       repo_path  ||= Pathname.new(Repository.root_path)
 
       repo = Repository.instance(repo_path)
@@ -223,14 +222,15 @@ module GitHooks
     end
     module_function :run_externals
 
-    def start(options = {}) # rubocop:disable MethodLength
+    def start(options = {}) # rubocop:disable Style/CyclomaticComplexity, Style/MethodLength
       phase = options[:hook] || GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
-      if active_hook = Hook.phases[phase]
+      if (active_hook = Hook.phases[phase])
         active_hook.args            = options.delete(:args)
-        active_hook.unstaged        = options.delete(:unstaged)
+        active_hook.staged          = options.delete(:staged)
         active_hook.untracked       = options.delete(:untracked)
+        active_hook.tracked         = options.delete(:tracked)
         active_hook.repository_path = options.delete(:repo)
       else
         fail Error::InvalidPhase, "Hook '#{phase}' is not defined - have you registered any tests for this hook yet?"
@@ -242,10 +242,10 @@ module GitHooks
 
       sections.each do |section|
         hash_tail_length = (section_length - section.title.length)
-        printf "===== %s %s=====\n", section.colored_name(phase), ('=' * hash_tail_length)
+        printf "===== %s %s===== (%ds)\n", section.colored_name(phase), ('=' * hash_tail_length), section.benchmark
 
         section.actions.each_with_index do |action, index|
-          printf "  %d. [ %s ] %s\n", (index + 1), action.state_symbol, action.colored_title
+          printf "  %d. [ %s ] %s (%ds)\n", (index + 1), action.state_symbol, action.colored_title, action.benchmark
 
           action.errors.each do |error|
             printf "    %s %s\n", color_bright_red(MARK_FAILURE), error
@@ -270,9 +270,9 @@ module GitHooks
     end
     module_function :start
 
-    def load_tests(path, skip_bundler = false) # rubocop:disable MethodLength
+    def load_tests(path, skip_bundler = false) # rubocop:disable MethodLength,Style/CyclomaticComplexity
       hooks_root = Pathname.new(path).realpath
-      hooks_path = hooks_root + 'hooks'
+      hooks_path = (p = (hooks_root + 'hooks')).exist? ? p : (hooks_root + '.hooks')
       hooks_libs = hooks_root + 'libs'
       gemfile    = hooks_root + 'Gemfile'
 
@@ -293,7 +293,7 @@ module GitHooks
           end
           Bundler.require(:default)
         rescue LoadError
-          puts 'Unable to load bundler - please make sure it\'s installed.'
+          puts %Q|Unable to load bundler - please make sure it's installed.|
           raise # rubocop:disable SignalException
         rescue Bundler::GemNotFound => e
           puts "Error: #{e.message}"
@@ -303,6 +303,7 @@ module GitHooks
       end
 
       $LOAD_PATH.unshift hooks_libs.to_s
+
       Dir["#{hooks_path}/**/*.rb"].each do |lib|
         lib.gsub!('.rb', '')
         puts "Loading: #{lib}" if GitHooks.verbose

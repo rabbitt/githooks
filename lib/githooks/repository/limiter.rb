@@ -17,38 +17,47 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module GitHooks
-  class Repository::Limiter
-    attr_reader :type, :only
+  class Repository
+    class Limiter
+      attr_reader :type, :only
 
-    def initialize(type, options = {})
-      @type   = type
-      @only   = options.delete(:only) || options.delete(:to)
-    end
+      def initialize(type, options = {})
+        @type     = type
+        @only     = options.delete(:only) || options.delete(:to)
+        @inverted = false
+      end
 
-    def only(*args)
-      return @only if args.empty?
-      @only = args.flatten
-    end
-    alias_method :to, :only
+      def only(*args)
+        return @only if args.empty?
+        @only = args.flatten
+        self
+      end
+      alias_method :to, :only
 
-    def limit(files)
-      files.select! do |file|
-        match_file(file, @only).tap do |result|
-          if GitHooks.debug?
-            result = (result ? 'success' : 'failure')
-            puts "  #{file.path.to_s} (#{file.attribute_value(@type).inspect}) was a #{result}"
+      def inverted
+        @inverted = true
+      end
+      alias_method :invert, :inverted
+
+      def limit(files)
+        files.select! do |file|
+          match_file(file, @only).tap do |result|
+            if GitHooks.debug?
+              result = (result ? 'success' : 'failure')
+              puts "  #{file.path} (#{file.attribute_value(@type).inspect}) was a #{result}"
+            end
           end
         end
       end
-    end
 
-  private
+    private
 
-    def match_file(file, match_value)
-      if match_value.is_a? Array
-        match_value.any? { |value| file.match(@type, value) }
-      else
-        file.match(@type, match_value)
+      def match_file(file, match_value)
+        if @inverted
+          [*match_value].none? { |value| file.match(@type, value) }
+        else
+          [*match_value].any? { |value| file.match(@type, value) }
+        end
       end
     end
   end

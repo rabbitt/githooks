@@ -53,7 +53,7 @@ module GitHooks
 
         @aliases = options.delete(:aliases) || []
         @aliases << name
-        @aliases.collect! { |_alias| normalize(_alias) }
+        @aliases.collect! { |alias_name| normalize(alias_name) }
         @aliases.uniq!
       end
 

@@ -26,100 +26,102 @@ unless defined? DiffIndexEntryDelegateClass
 end
 
 module GitHooks
-  class Repository::File < DiffIndexEntryDelegateClass
-    def initialize(entry)
-      unless entry.is_a? Repository::DiffIndexEntry
-        fail ArgumentError, "Expected a Repository::DiffIndexEntry but got a '#{entry.class.name}'"
+  class Repository
+    class File < DiffIndexEntryDelegateClass
+      def initialize(entry)
+        unless entry.is_a? Repository::DiffIndexEntry
+          fail ArgumentError, "Expected a Repository::DiffIndexEntry but got a '#{entry.class.name}'"
+        end
+        @file = entry
       end
-      @file = entry
-    end
 
-    def __getobj__ # rubocop:disable TrivialAccessors
-      @file
-    end
-
-    def inspect
-      attributes = [:name, :path, :type, :mode, :sha, :score].collect do |name|
-        "#{name}=#{attribute_value(name).inspect}"
+      def __getobj__ # rubocop:disable TrivialAccessors
+        @file
       end
-      "#<#{self.class.name} #{attributes.join(' ')} >"
-    end
 
-    def path
-      to.path || from.path
-    end
-
-    def name
-      path.basename.to_s
-    end
-
-    # rubocop:disable CyclomaticComplexity
-    def attribute_value(attribute)
-      case attribute
-        when :name then name
-        when :path then path.to_s
-        when :type then type
-        when :mode then to.mode
-        when :sha then to.sha
-        when :score then score
-        else fail ArgumentError,
-                  "Invalid attribute type '#{attribute}' - expected: :name, :path, :type, :mode, :sha, or :score"
+      def inspect
+        attributes = [:name, :path, :type, :mode, :sha, :score].collect do |name|
+          "#{name}=#{attribute_value(name).inspect}"
+        end
+        "#<#{self.class.name} #{attributes.join(' ')} >"
       end
-    end
 
-    def match(type, _match)
-      value = attribute_value(type)
-      return _match.call(value) if _match.respond_to? :call
-
-      case type
-        when :name  then _match.is_a?(Regexp) ? value =~ _match : value == _match
-        when :path  then _match.is_a?(Regexp) ? value =~ _match : value == _match
-        when :type  then _match.is_a?(Array) ? _match.include?(value) : _match == value
-        when :mode  then _match & value == _match
-        when :sha   then _match == value
-        when :score then _match == value
+      def path
+        to.path || from.path
       end
-    end
-    # rubocop:enable CyclomaticComplexity
 
-    def fd
-      case type
-        when :deleted, :deletion then nil
-        else path.open
+      def name
+        path.basename.to_s
       end
-    end
 
-    def realpath
-      case type
-        when :deleted, :deletion then path
-        else path.realpath
+      # rubocop:disable CyclomaticComplexity
+      def attribute_value(attribute)
+        case attribute
+          when :name then name
+          when :path then path.to_s
+          when :type then type
+          when :mode then to.mode
+          when :sha then to.sha
+          when :score then score
+          else fail ArgumentError,
+                    "Invalid attribute type '#{attribute}' - expected: :name, :path, :type, :mode, :sha, or :score"
+        end
       end
-    end
 
-    def contains?(string_or_regexp)
-      if string_or_regexp.is_a?(Regexp)
-        contents =~ string_or_regexp
-      else
-        contents.include? string_or_regexp
+      def match(type, selector)
+        value = attribute_value(type)
+        return selector.call(value) if selector.respond_to? :call
+
+        case type
+          when :name  then selector.is_a?(Regexp) ? value =~ selector : value == selector
+          when :path  then selector.is_a?(Regexp) ? value =~ selector : value == selector
+          when :type  then [*selector].include?(:any) ? true : [*selector].include?(value)
+          when :mode  then selector & value == selector
+          when :sha   then selector == value
+          when :score then selector == value
+        end
       end
-    end
+      # rubocop:enable CyclomaticComplexity
 
-    def grep(regexp)
-      lines(true).select_with_index { |line|
-        line =~ regexp
-      }.collect { |num, line|
-        [num + 1, line] # line numbers start from 1, not 0
-      }
-    end
+      def fd
+        case type
+          when :deleted, :deletion then nil
+          else path.open
+        end
+      end
 
-    def contents
-      return unless fd
-      fd.read
-    end
+      def realpath
+        case type
+          when :deleted, :deletion then path
+          else path.realpath
+        end
+      end
 
-    def lines(strip_newlines = false)
-      return [] unless fd
-      strip_newlines ? fd.readlines.collect(&:chomp!) : fd.readlines
+      def contains?(string_or_regexp)
+        if string_or_regexp.is_a?(Regexp)
+          contents =~ string_or_regexp
+        else
+          contents.include? string_or_regexp
+        end
+      end
+
+      def grep(regexp)
+        lines(true).select_with_index { |line|
+          line =~ regexp
+        }.collect { |num, line|
+          [num + 1, line] # line numbers start from 1, not 0
+        }
+      end
+
+      def contents
+        return unless fd
+        fd.read
+      end
+
+      def lines(strip_newlines = false)
+        return [] unless fd
+        strip_newlines ? fd.readlines.collect(&:chomp!) : fd.readlines
+      end
     end
   end
 end

@@ -25,17 +25,17 @@ require 'githooks/version'
 module GitHooks
   AUTHOR = 'Carl P. Corliss <rabbitt@gmail.com>'
 
-  autoload :Config,            'githooks/config'
-  autoload :CommandRunner,     'githooks/command'
-  autoload :Command,           'githooks/command'
-  autoload :CLI,               'githooks/cli'
-  autoload :Hook,              'githooks/hook'
-  autoload :Section,           'githooks/section'
-  autoload :Action,            'githooks/action'
-  autoload :Repository,        'githooks/repository'
-  autoload :Runner,            'githooks/runner'
-  autoload :SystemUtils,       'githooks/system_utils'
-  autoload :TerminalColors,    'githooks/terminal_colors'
+  autoload :Config,         'githooks/config'
+  autoload :CommandRunner,  'githooks/command'
+  autoload :Command,        'githooks/command'
+  autoload :CLI,            'githooks/cli'
+  autoload :Hook,           'githooks/hook'
+  autoload :Section,        'githooks/section'
+  autoload :Action,         'githooks/action'
+  autoload :Repository,     'githooks/repository'
+  autoload :Runner,         'githooks/runner'
+  autoload :SystemUtils,    'githooks/system_utils'
+  autoload :TerminalColors, 'githooks/terminal_colors'
 
   class << self
     attr_reader :debug, :verbose, :ignore_script

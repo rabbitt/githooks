@@ -22,7 +22,7 @@ require 'singleton'
 require 'open3'
 
 module GitHooks
-  class Repository
+  class Repository # rubocop:disable ClassLength
     autoload :Config,         'githooks/repository/config'
     autoload :File,           'githooks/repository/file'
     autoload :Limiter,        'githooks/repository/limiter'
@@ -34,12 +34,12 @@ module GitHooks
       renamed:   'R', retyped:   'T',
       unknown:   'U', unmerged:  'X',
       broken:    'B', untracked: '?',
-      any:       '*'
+      any:       '*', tracked:   '^'
     }.freeze unless defined? CHANGE_TYPE_SYMBOLS
 
     CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze unless defined? CHANGE_TYPES
 
-    DEFAULT_DIFF_INDEX_OPTIONS = { staged: true, ref: 'HEAD' } unless defined? DEFAULT_DIFF_INDEX_OPTIONS
+    DEFAULT_DIFF_INDEX_OPTIONS = { staged: true } unless defined? DEFAULT_DIFF_INDEX_OPTIONS
 
     @__instance__ = {}
     @__mutex__    = Mutex.new
@@ -91,28 +91,39 @@ module GitHooks
     end
 
     def manifest(options = {})
-      ref       = options.delete(:ref) || 'HEAD'
-      unstaged  = options.delete(:unstaged)
-      untracked = options.delete(:untracked)
+      ref = options.delete(:ref)
 
-      return staged_manifest(ref: ref) unless unstaged || untracked
+      return staged_manifest(ref: ref) if options.delete(:staged)
 
-      [].tap do |files|
-        files.push(*unstaged_manifest(ref: ref)) if unstaged
-        files.push(*untracked_manifest) if untracked
-      end
+      files = unstaged_manifest(ref: ref)
+
+      tracked_manifest(ref: ref).each do |file|
+        files << file unless files.index { |f| f.path.to_s == file.path.to_s }
+      end if options.delete(:tracked)
+
+      untracked_manifest(ref: ref).each do |file|
+        files << file unless files.index { |f| f.path.to_s == file.path.to_s }
+      end if options.delete(:untracked)
+
+      files.sort_by! { |f| f.path.to_s }
+      files.uniq { |f| f.path.to_s }
     end
 
     def staged_manifest(options = {})
-      diff_index(options.merge(unstaged: false))
+      diff_index(options.merge(staged: true))
     end
     alias_method :commit_manifest, :staged_manifest
 
     def unstaged_manifest(options = {})
-      diff_index(options.merge(unstaged: true))
+      diff_index(options.merge(staged: false))
     end
 
-    def untracked_manifest
+    def tracked_manifest(*)
+      files = git_command('ls-files', '--exclude-standard').output.strip.split(/\s*\n\s*/)
+      files.collect { |path| DiffIndexEntry.from_file_path(path, true).to_repo_file }
+    end
+
+    def untracked_manifest(*)
       files = git_command('ls-files', '--others', '--exclude-standard').output.strip.split(/\s*\n\s*/)
       files.collect { |path| DiffIndexEntry.from_file_path(path).to_repo_file }
     end
@@ -122,11 +133,17 @@ module GitHooks
     def diff_index(options = {})
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
-      cmd = %w(diff-index -C -M -B)
-      cmd << '--cached' unless options[:unstaged]
-      cmd << options.delete(:ref) || 'HEAD'
+      if $stdout.tty? && !options[:staged]
+        cmd = %w(diff-files -C -M -B)
+      else
+        cmd = %w(diff-index -C -M -B)
+        cmd << '--cached' if options[:staged]
+        cmd << (options.delete(:ref) || 'HEAD')
+      end
 
-      raw_output = git_command(*cmd).output.strip
+      cmd.compact!
+
+      raw_output = git_command(*cmd.compact).output.strip
       raw_output.split(/\n/).collect { |data| DiffIndexEntry.new(data).to_repo_file }
     end
 

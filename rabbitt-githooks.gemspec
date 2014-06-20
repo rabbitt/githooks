@@ -27,7 +27,7 @@ Gem::Specification.new do |spec|
   spec.version          = GitHooks::VERSION
   spec.authors          = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:first).collect(&:strip)
   spec.email            = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:last).collect(&:strip)
-  spec.description      = "GitHooker provides a framework for building tests that can be used with git hooks"
+  spec.description      = "GitHooks provides a framework for building tests that can be used with git hooks"
   spec.homepage         = "http://github.com/rabbitt/githooks"
   spec.summary          = "framework for building git hooks tests"
   spec.license          = "GPLv2"
@@ -46,4 +46,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rspec', '~> 2.14'
   spec.add_development_dependency 'bundler', '~> 1.3'
   spec.add_development_dependency 'rubocop', '~> 0.18'
+  spec.add_development_dependency 'ruby-lint', '~> 2.0.1'
 end

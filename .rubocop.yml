@@ -1,7 +1,7 @@
 AllCops:
-  Includes:
+  Include:
     - Rakefile
-  Excludes:
+  Exclude:
     - test.rb
     - bin/**
 
@@ -34,9 +34,9 @@ RegexpLiteral:
 DotPosition:
   Enabled: false
 
-MethodLength:
+Style/MethodLength:
   CountComments: false
-  Max: 15
+  Max: 20
 
 ParameterLists:
   Max: 5
@@ -71,3 +71,17 @@ EmptyLinesAroundAccessModifier:
 EndAlignment:
   AlignWith: variable
 
+Style/DoubleNegation:
+  Enabled: false
+
+Style/PercentLiteralDelimiters:
+  Enabled: false
+
+Style/FormatString:
+  Enabled: false
+
+Lint/UnusedMethodArgument:
+  Enabled: false
+
+Style/EachWithObject:
+  Enabled: false
