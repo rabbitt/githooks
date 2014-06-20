@@ -37,7 +37,7 @@ module GitHooks
       light = !!name.match(/(light|bright)/) ? '1' : '0'
       blink = !!name.match(/blink/) ? ';5' : ''
 
-      color_code = REGEX_COLOR_MAP.find { |key, code| name =~ key }
+      color_code = REGEX_COLOR_MAP.find { |key, _| name =~ key }
       color_code = color_code ? color_code.last : NORMAL
 
       "\033[#{light}#{blink};#{color_code}m"
@@ -50,11 +50,10 @@ module GitHooks
           name1 = "color_#{style}_#{shade}_#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
           name2 = "color_#{style}_#{shade}#{color}".gsub(/(^_+|_+$)/, '').gsub(/_{2,}/, '_')
           [name1, name2].each do |name|
-            unless const_defined? name.upcase
-              const_set(name.upcase, color(name))
-              define_method(name) { |text| "#{color(name)}#{text}#{color(:normal)}" }
-              module_function name.to_sym
-            end
+            next if const_defined? name.upcase
+            const_set(name.upcase, color(name))
+            define_method(name) { |text| "#{color(name)}#{text}#{color(:normal)}" }
+            module_function name.to_sym
           end
         end
       end

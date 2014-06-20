@@ -19,25 +19,28 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 require 'stringio'
 require 'open3'
+require 'set'
 
 module GitHooks
-  class Action
+  class Action # rubocop:disable Style/ClassLength
     include TerminalColors
 
-    attr_reader :title, :section, :on, :limiters, :success, :errors, :warnings
+    attr_reader :title, :section, :on, :limiters
+    attr_reader :success, :errors, :warnings, :benchmark
     private :section, :on
     alias_method :success?, :success
 
     def initialize(title, section, &block)
       fail ArgumentError, 'Missing required block' unless block_given?
 
-      @title    = title
-      @section  = section
-      @on       = nil
-      @limiters = []
-      @success  = true
-      @errors   = []
-      @warnings = []
+      @title     = title
+      @section   = section
+      @on        = nil
+      @limiters  = Set.new
+      @success   = true
+      @errors    = []
+      @warnings  = []
+      @benchmark = 0
 
       instance_eval(&block)
 
@@ -73,6 +76,7 @@ module GitHooks
       begin
         running!
         $stdout, $stderr = warnings, errors
+        time_start = Time.now
         @success &= @on.call
       rescue => error
         errors.puts "Exception thrown during action call: #{error.class.name}: #{error.message}"
@@ -87,6 +91,7 @@ module GitHooks
 
         @success = false
       ensure
+        @benchmark = Time.now - time_start
         @errors, @warnings = [errors, warnings].collect do |io|
           io.rewind
           io.read.split(/\n/)
@@ -107,8 +112,8 @@ module GitHooks
 
     # DSL Methods
 
-    def limit(what)
-      Repository::Limiter.new(what).tap do |limiter|
+    def limit(type)
+      (find_limiter(type) || Repository::Limiter.new(type)).tap do |limiter|
         @limiters << limiter
       end
     end
@@ -130,6 +135,10 @@ module GitHooks
     end
 
   private
+
+    def find_limiter(type)
+      @limiters.select { |l| l.type == type }.first
+    end
 
     def run_command(command, *args, &block)
       options = args.extract_options

@@ -3,11 +3,11 @@ require 'githooks'
 RUBY_FILE_REGEXP = %r{^((app|lib)/.+\.rb|bin/.+)$}.freeze
 
 GitHooks::Hook.register 'pre-commit' do
-  commands 'scss-lint', :ruby, :rubocop
+  commands :ruby, :rubocop
 
-    section 'Standards' do
+  section 'Standards' do
     action 'Validate Ruby Syntax' do
-      limit(:type).to :modified, :added, :untracked
+      limit(:type).to :modified, :added, :untracked, :tracked
       limit(:path).to RUBY_FILE_REGEXP
 
       on_each_file do |file|
@@ -16,16 +16,16 @@ GitHooks::Hook.register 'pre-commit' do
     end
 
     action 'Validate Ruby Standards' do
-      limit(:type).to :modified, :added, :untracked
+      limit(:type).to :modified, :added, :untracked, :tracked
       limit(:path).to RUBY_FILE_REGEXP
 
       on_all_files do |files|
-        rubocop '-D', '--format', 'clang', files, strip_empty_lines: true
+        rubocop '-D', '--format', 'clang', files.collect(&:path), strip_empty_lines: true
       end
     end
 
     action 'No Leading Tabs in Ruby files' do
-      limit(:type).to :modified, :added, :untracked
+      limit(:type).to :modified, :added, :untracked, :tracked
       limit(:path).to RUBY_FILE_REGEXP
 
       on_each_file do |file|
@@ -38,15 +38,6 @@ GitHooks::Hook.register 'pre-commit' do
             $stderr.printf "%s:%#{matches.last.first.to_s.size}d: %s\n", file.path, line_number, line_text
           end
         end.empty?
-      end
-    end
-
-    action 'Validate CSS Syntax' do
-      limit(:type).to :modified, :added, :untracked
-      limit(:path).to %r{^(app|lib)/.+css$}
-
-      on_all_files do |files|
-        scss_lint files.collect(&:path)
       end
     end
   end

@@ -63,17 +63,22 @@ module GitHooks
     end
 
     attr_reader :sections, :phase, :repository, :repository_path
-    attr_accessor :args, :unstaged, :untracked
+    attr_accessor :args, :staged, :untracked, :tracked
 
     def initialize(phase)
       @phase     = phase
-      @sections  = []
+      @sections  = {}
       @commands  = []
       @args      = []
-      @unstaged  = false
+      @staged    = true
+      @tracked   = false
       @untracked = false
 
       repository_path = Dir.getwd # rubocop:disable UselessAssignment
+    end
+
+    def [](name)
+      @sections[name]
     end
 
     def repository_path=(path)
@@ -86,7 +91,7 @@ module GitHooks
 
     def run
       # only run sections that have actions matching files in the manifest
-      runable_sections = @sections.select { |section| !section.actions.empty? }
+      runable_sections = sections.select { |section| !section.actions.empty? }
       runable_sections.collect { |section| section.run }.all?
     end
 
@@ -111,6 +116,10 @@ module GitHooks
       @commands.select { |command| command.aliases.include? name.to_s }.first
     end
 
+    def sections
+      @sections.values
+    end
+
     # DSL methods
 
     def command(name, options = {})
@@ -123,7 +132,14 @@ module GitHooks
     end
 
     def section(name, &block)
-      @sections << Section.new(name, self, &block)
+      key_name = Section.key_from_name(name)
+      return @sections[key_name] unless block_given?
+
+      if @sections.include? key_name
+        @sections[key_name].instance_eval(&block)
+      else
+        @sections[key_name] ||= Section.new(name, self, &block)
+      end
       self
     end
 
@@ -141,8 +157,9 @@ module GitHooks
 
       def manifest
         @files ||= repo.manifest(
-          untracked: hook.untracked,
-          unstaged:  hook.unstaged
+          staged:    hook.staged,
+          tracked:   hook.tracked,
+          untracked: hook.untracked
         )
       end
 

@@ -1,7 +1,9 @@
-class Process::Status
-  def failed?
-    !success?
+module Process
+  class Status
+    def failed?
+      !success?
+    end
+    alias_method :fail?, :failed?
+    alias_method :failure?, :failed?
   end
-  alias_method :fail?, :failed?
-  alias_method :failure?, :failed?
 end

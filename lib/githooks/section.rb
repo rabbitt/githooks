@@ -23,16 +23,23 @@ module GitHooks
   class Section < DelegateClass(Array)
     include TerminalColors
 
-    attr_reader :name, :hook, :success, :actions
+    attr_reader :name, :hook, :success, :actions, :benchmark
     alias_method :title, :name
     alias_method :success?, :success
     alias_method :all, :actions
 
+    class << self
+      def key_from_name(name)
+        name.to_s.downcase.gsub(/[\W\s]+/, '_').to_sym
+      end
+    end
+
     def initialize(name, hook, &block)
-      @name    = name.to_s.titleize
-      @success = true
+      @name      = name.to_s.titleize
+      @success   = true
       @actions   = []
-      @hook    = hook
+      @hook      = hook
+      @benchmark = 0
 
       instance_eval(&block)
 
@@ -68,6 +75,10 @@ module GitHooks
       "#{phase} :: #{@name}"
     end
 
+    def key_name
+      self.class.key_from_name(@name)
+    end
+
     def colored_name(phase = GitHooks::HOOK_NAME)
       status_colorize name(phase)
     end
@@ -89,8 +100,10 @@ module GitHooks
     def run
       running!
       begin
+        time_start = Time.now
         actions.collect { |action| @success &= action.run }.all?
       ensure
+        @benchmark = Time.now - time_start
         finished!
       end
     end
