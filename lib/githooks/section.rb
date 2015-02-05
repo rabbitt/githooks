@@ -21,8 +21,6 @@ require 'delegate'
 
 module GitHooks
   class Section < DelegateClass(Array)
-    include TerminalColors
-
     attr_reader :name, :hook, :success, :actions, :benchmark
     alias_method :title, :name
     alias_method :success?, :success
@@ -49,7 +47,7 @@ module GitHooks
     # overrides previous action method to only return
     # actions that have a non-empty manifest
     def actions
-      @actions.select { |action| !action.manifest.empty? }
+      @actions.reject { |action| action.manifest.empty? }
     end
     alias_method :__getobj__, :actions
 
@@ -63,38 +61,34 @@ module GitHooks
     end
 
     def completed?
-      @actions.all? { |action| action.finished? }
+      @actions.all?(&:finished?)
     end
 
     def wait_count
-      @actions.select { |action| action.waiting? }.size
+      @actions.select(&:waiting?).size
     end
 
     def name(phase = GitHooks::HOOK_NAME)
-      phase = (phase || GitHooks::HOOK_NAME).to_s.gsub('-', '_').camelize
-      "#{phase} :: #{@name}"
-    end
-
-    def key_name
-      self.class.key_from_name(@name)
+      "#{(phase || GitHooks::HOOK_NAME).to_s.camelize} :: #{@name}"
     end
 
     def colored_name(phase = GitHooks::HOOK_NAME)
       status_colorize name(phase)
     end
 
-    def action(title, options = {}, &block)
-      fail ArgumentError, 'Missing required block to #perform' unless block_given?
-      @actions << Action.new(title, self, &block)
-      self
+    def key_name
+      self.class.key_from_name(@name)
     end
 
     def status_colorize(text)
-      if finished? && completed?
-        success? ? color_bright_green(text) : color_bright_red(text)
-      else
-        color_dark_cyan(text)
-      end
+      return text.unknown! unless finished? && completed?
+      success? ? text.success! : text.failure!
+    end
+
+    def action(title, &block)
+      fail ArgumentError, 'expected block, received none' unless block_given?
+      @actions << Action.new(title, self, &block)
+      self
     end
 
     def run

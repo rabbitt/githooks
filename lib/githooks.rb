@@ -20,6 +20,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require 'pathname'
 require 'githooks/error'
 require 'githooks/core_ext'
+require 'githooks/core_ext/colorize'
 require 'githooks/version'
 
 module GitHooks
@@ -35,7 +36,6 @@ module GitHooks
   autoload :Repository,     'githooks/repository'
   autoload :Runner,         'githooks/runner'
   autoload :SystemUtils,    'githooks/system_utils'
-  autoload :TerminalColors, 'githooks/terminal_colors'
 
   class << self
     attr_reader :debug, :verbose, :ignore_script
@@ -74,13 +74,17 @@ module GitHooks
     end
   end
 
-  LIB_PATH = Pathname.new(__FILE__).dirname.realpath
-  GEM_PATH = LIB_PATH.parent
-  BIN_PATH = GEM_PATH + 'bin'
+  SUCCESS_SYMBOL = '✓'.success! unless defined? SUCCESS_SYMBOL
+  FAILURE_SYMBOL = 'X'.failure! unless defined? FAILURE_SYMBOL
+  UNKNOWN_SYMBOL = '?'.unknown! unless defined? UNKNOWN_SYMBOL
 
-  SCRIPT_PATH = Pathname.new($0)
-  SCRIPT_NAME = SCRIPT_PATH.basename.to_s
-  HOOK_NAME   = SCRIPT_NAME.to_s
+  LIB_PATH = Pathname.new(__FILE__).dirname.realpath unless defined? LIB_PATH
+  GEM_PATH = LIB_PATH.parent                         unless defined? GEM_PATH
+  BIN_PATH = GEM_PATH.join('bin')                    unless defined? BIN_PATH
+
+  SCRIPT_PATH = Pathname.new($0)          unless defined? SCRIPT_PATH
+  SCRIPT_NAME = SCRIPT_PATH.basename.to_s unless defined? SCRIPT_NAME
+  HOOK_NAME   = SCRIPT_NAME.to_s          unless defined? HOOK_NAME
 
   if ARGV.include? '--ignore-script'
     ARGV.delete('--ignore-script')

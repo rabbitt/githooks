@@ -1,0 +1,93 @@
+AllCops:
+  Include:
+    - Rakefile
+  Exclude:
+    - test.rb
+    - bin/**
+
+
+SpecialGlobalVars:
+  Enabled: false
+
+PerlBackrefs:
+  Enabled: false
+
+Documentation:
+  Enabled: false
+
+BlockComments:
+  Enabled: false
+
+Encoding:
+  Enabled: false
+
+MultilineBlockChain:
+  Enabled: false
+
+Blocks:
+  Enabled: false
+
+RegexpLiteral:
+  Enabled: false
+
+# dots at the end of lines are okay
+DotPosition:
+  Enabled: false
+
+MethodLength:
+  CountComments: false
+  Max: 15
+
+ParameterLists:
+  Max: 5
+  CountKeywordArgs: true
+
+BlockNesting:
+  Max: 4
+
+CollectionMethods:
+  PreferredMethods:
+    map: 'collect'
+    map!: 'collect!'
+    reduce: 'inject'
+    detect: 'find'
+    find_all: 'select'
+
+CaseIndentation:
+  IndentWhenRelativeTo: end
+  IndentOneStep: true
+
+LineLength:
+  Enabled: false
+
+# Personally, I prefer to outdent public/protected/private, as it makes
+# it easier to see the different sections of code.
+AccessModifierIndentation:
+  EnforcedStyle: outdent
+
+EmptyLinesAroundAccessModifier:
+  Enabled: true
+
+EndAlignment:
+  AlignWith: variable
+
+SpaceInsideBrackets:
+  Enabled: false
+
+UnneededPercentX:
+  Enabled: false
+
+PercentLiteralDelimiters:
+  Enabled: false
+
+BarePercentLiterals:
+  Enabled: false
+
+Style/TrailingComma:
+  Enabled: false
+
+Style/DoubleNegation:
+  Enabled: false
+
+Style/FileName:
+  Enabled: false

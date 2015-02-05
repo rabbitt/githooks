@@ -17,12 +17,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require 'ostruct'
-require 'singleton'
-require 'open3'
-
 module GitHooks
   class Repository # rubocop:disable ClassLength
+    extend SystemUtils
+
+    command :git
+
     autoload :Config,         'githooks/repository/config'
     autoload :File,           'githooks/repository/file'
     autoload :Limiter,        'githooks/repository/limiter'
@@ -38,11 +38,11 @@ module GitHooks
     }.freeze unless defined? CHANGE_TYPE_SYMBOLS
 
     CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze unless defined? CHANGE_TYPES
-
     DEFAULT_DIFF_INDEX_OPTIONS = { staged: true } unless defined? DEFAULT_DIFF_INDEX_OPTIONS
 
     @__instance__ = {}
     @__mutex__    = Mutex.new
+
     def self.instance(path = Dir.getwd)
       path = Pathname.new(path).realpath
       strpath = path.to_s
@@ -70,12 +70,8 @@ module GitHooks
       @config ||= Repository::Config.new(root_path)
     end
 
-    def git_command(*args)
-      git.execute(*args.flatten)
-    end
-
     def get_root_path(path)
-      git_command('rev-parse', '--show-toplevel', path: path).tap do |result|
+      git('rev-parse', '--show-toplevel', chdir: path).tap do |result|
         unless result.status.success? && result.output !~ /not a git repository/i
           fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
         end
@@ -83,30 +79,33 @@ module GitHooks
     end
 
     def stash
-      git_command(%w( stash -q --keep-index -a)).status.success?
+      git(*%w( stash -q --keep-index -a)).status.success?
     end
 
     def unstash
-      git_command(%w(stash pop -q)).status.success?
+      git(*%w(stash pop -q)).status.success?
     end
 
-    def manifest(options = {})
+    def manifest(options = {}) # rubocop:disable AbcSize
       ref = options.delete(:ref)
-
       return staged_manifest(ref: ref) if options.delete(:staged)
 
-      files = unstaged_manifest(ref: ref)
+      manifest_list = unstaged_manifest(ref: ref)
 
-      tracked_manifest(ref: ref).each do |file|
-        files << file unless files.index { |f| f.path.to_s == file.path.to_s }
-      end if options.delete(:tracked)
+      if options.delete(:tracked)
+        tracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
+          list << file unless list.include?(file)
+        end
+      end
 
-      untracked_manifest(ref: ref).each do |file|
-        files << file unless files.index { |f| f.path.to_s == file.path.to_s }
-      end if options.delete(:untracked)
+      if options.delete(:untracked)
+        untracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
+          list << file unless list.include?(file)
+        end
+      end
 
-      files.sort_by! { |f| f.path.to_s }
-      files.uniq { |f| f.path.to_s }
+      manifest_list.sort!
+      manifest_list.uniq { |f| f.path.to_s }
     end
 
     def staged_manifest(options = {})
@@ -119,18 +118,18 @@ module GitHooks
     end
 
     def tracked_manifest(*)
-      files = git_command('ls-files', '--exclude-standard').output.strip.split(/\s*\n\s*/)
+      files = git('ls-files', '--exclude-standard').output.strip.split(/\s*\n\s*/)
       files.collect { |path| DiffIndexEntry.from_file_path(path, true).to_repo_file }
     end
 
     def untracked_manifest(*)
-      files = git_command('ls-files', '--others', '--exclude-standard').output.strip.split(/\s*\n\s*/)
+      files = git('ls-files', '--others', '--exclude-standard').output.strip.split(/\s*\n\s*/)
       files.collect { |path| DiffIndexEntry.from_file_path(path).to_repo_file }
     end
 
   private
 
-    def diff_index(options = {})
+    def diff_index(options = {}) # rubocop:disable AbcSize
       options = DEFAULT_DIFF_INDEX_OPTIONS.merge(options)
 
       if $stdout.tty? && !options[:staged]
@@ -141,21 +140,18 @@ module GitHooks
         cmd << (options.delete(:ref) || 'HEAD')
       end
 
-      cmd.compact!
-
-      raw_output = git_command(*cmd.compact).output.strip
-      raw_output.split(/\n/).collect { |data| DiffIndexEntry.new(data).to_repo_file }
-    end
-
-    def git
-      @git ||= SystemUtils::Command.new('git')
+      git(*cmd.compact.compact).output_lines.collect do |diff_data|
+        DiffIndexEntry.new(diff_data).to_repo_file
+      end
+    rescue
+      exit! 1
     end
 
     def while_stashed(&block)
       fail ArgumentError, 'Missing required block' unless block_given?
       begin
         stash
-        yield
+        block.call
       ensure
         unstash
       end

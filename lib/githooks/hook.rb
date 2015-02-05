@@ -17,6 +17,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
+require_relative 'repository'
 require_relative 'system_utils'
 
 module GitHooks
@@ -27,24 +28,22 @@ module GitHooks
     @__mutex__  = Mutex.new
 
     class << self
-      def instances # rubocop:disable TrivialAccessors
-        @__phases__
-      end
-      alias_method :phases, :instances
+      attr_reader :__phases__
+      alias_method :phases, :__phases__
 
-      def instance(phase = 'pre-commit')
+      def instance(phase = 'pre-commit') # rubocop:disable AbcSize
         phase = phase.to_s
         unless VALID_PHASES.include? phase
-          valid_phases = VALID_PHASES.collect(&:inspect).join(', ')
-          fail ArgumentError, "Hook phase (#{phase.inspect}) must be one of #{valid_phases}"
+          fail ArgumentError, "Hook phase (#{phase}) must be one of #{VALID_PHASES.join(', ')}"
         end
 
-        return phases[phase] if phases[phase]
-
-        @__mutex__.synchronize do
-          return phases[phase] if phases[phase]
-          phases[phase] = new(phase)
+        unless phases[phase]
+          @__mutex__.synchronize {
+            return phases[phase] if phases[phase]
+            phases[phase] = new(phase)
+          }
         end
+        phases[phase]
       end
       private :instance
 
@@ -57,8 +56,8 @@ module GitHooks
       end
 
       def register(phase, &block)
-        fail ArgumentError, 'Missing required block to #register' unless block_given?
-        self[phase].instance_eval(&block)
+        fail ArgumentError, 'expected block, received none' unless block_given?
+        instance(phase).instance_eval(&block)
       end
     end
 
@@ -66,7 +65,7 @@ module GitHooks
     attr_accessor :args, :staged, :untracked, :tracked
 
     def initialize(phase)
-      @phase     = phase
+      @phase     = phase.to_s
       @sections  = {}
       @commands  = []
       @args      = []
@@ -85,35 +84,31 @@ module GitHooks
       @repository = Repository.new(path)
     end
 
-    def manifest(options = {})
+    def manifest
       @manifest ||= Manifest.new(self)
     end
 
     def run
       # only run sections that have actions matching files in the manifest
-      runable_sections = sections.select { |section| !section.actions.empty? }
-      runable_sections.collect { |section| section.run }.all?
+      sections.reject { |s| s.actions.empty? }.collect(&:run).all?
     end
 
     def method_missing(method, *args, &block)
-      command = find_command(method)
-      return super unless command
+      return super unless command = find_command(method) # rubocop:disable AssignmentInCondition
       command.execute(*args, &block)
     end
 
     def setup_command(name, options = {})
-      name    = name.to_s.to_sym
-
       @commands << SystemUtils::Command.new(
-        name,
-        path: options.delete(:path),
-        aliases: options.delete(:aliases) || options.delete(:alias)
+        name.to_sym,
+        chdir: options.delete(:chdir),
+        bin_path: options.delete(:bin_path)
       )
     end
     private :setup_command
 
     def find_command(name)
-      @commands.select { |command| command.aliases.include? name.to_s }.first
+      @commands.select { |command| command.name == name.to_s }.first
     end
 
     def sections

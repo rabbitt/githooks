@@ -17,22 +17,22 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require 'fileutils'
-require 'githooks/terminal_colors'
-require 'shellwords'
 require 'thor'
+require 'fileutils'
+require 'shellwords'
+
+require_relative 'error'
+require_relative 'hook'
+require_relative 'repository'
+require_relative 'system_utils'
 
 module GitHooks
   module Runner
-    extend TerminalColors
-
-    MARK_SUCCESS = '✓'
-    MARK_FAILURE = 'X'
-    MARK_UNKNOWN = '?'
-
-    def run(options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
-      # unfreeze options
+    # rubocop:disable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
+    def run(options = {})
       options = Thor::CoreExt::HashWithIndifferentAccess.new(options)
+
+      options['staged'] = options['staged'].nil? ? true : options['staged']
 
       repo    = options['repo']   ||= Repository.root_path
       script  = options['script'] ||= Repository.instance(repo).config.script
@@ -56,7 +56,7 @@ module GitHooks
         load_tests(libpath, options['skip-bundler'])
         start(options)
       else
-        puts 'I can\'t figure out what to run - specify either path or script to give me a hint...'
+        puts %q"I can't figure out what to run - specify either path or script to give me a hint..."
       end
 
       if options['skip-post']
@@ -64,17 +64,17 @@ module GitHooks
       else
         run_externals('post-run-execute', repo, args)
       end
-    rescue GitHooks::Error::NotAGitRepo
+    rescue GitHooks::Error::NotAGitRepo => e
       puts "Unable to find a valid git repo in #{repo}."
       puts 'Please specify path to repo via --repo <path>' if GitHooks::SCRIPT_NAME == 'githooks'
+      raise e
     end
     module_function :run
 
-    def attach(options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
+    def attach(options = {})
       repo_path  = options[:repo] || Repository.root_path
       repo_path  = Pathname.new(repo_path) unless repo_path.nil?
-      repo_hooks = repo_path + '.git' + 'hooks'
-
+      repo_hooks = repo_path.join('.git', 'hooks')
       entry_path = options[:script] || options[:path]
 
       hook_phases = options[:hooks]
@@ -114,7 +114,7 @@ module GitHooks
 
     def detach(repo_path, hook_phases)
       repo_path   ||= Repository.root_path
-      repo_hooks    = Pathname.new(repo_path) + '.git' + 'hooks'
+      repo_hooks    = Pathname.new(repo_path).join('.git', 'hooks')
       hook_phases ||= Hook::VALID_PHASES
 
       repo = Repository.instance(repo_path)
@@ -136,7 +136,7 @@ module GitHooks
     end
     module_function :detach
 
-    def list(repo_path) # rubocop:disable Style/CyclomaticComplexity, Style/MethodLength
+    def list(repo_path)
       repo_path  ||= Pathname.new(Repository.root_path)
 
       repo = Repository.instance(repo_path)
@@ -149,9 +149,7 @@ module GitHooks
 
       if (executables = repo.config.pre_run_execute).size > 0
         puts 'PreRun Executables (in execution order):'
-        executables.each do |exe|
-          puts "  #{exe}"
-        end
+        puts executables.collect { |exe| "  #{exe}" }.join("\n")
         puts
       end
 
@@ -196,9 +194,10 @@ module GitHooks
         end
         puts
       end
-    rescue GitHooks::Error::NotAGitRepo
+    rescue Error::NotAGitRepo
       puts "Unable to find a valid git repo in #{repo}."
       puts 'Please specify path to repo via --repo <path>' if GitHooks::SCRIPT_NAME == 'githooks'
+      raise
     end
     module_function :list
 
@@ -206,7 +205,7 @@ module GitHooks
 
     def run_externals(which, repo_path, args)
       Repository.instance(repo_path).config[which].all? do |executable|
-        command = SystemUtils::Command.new(File.basename(executable), path: executable)
+        command = SystemUtils::Command.new(File.basename(executable), bin_path: executable)
 
         puts "#{which.camelize}: #{command.build_command(args)}" if GitHooks.verbose
         unless (r = command.execute(*args)).status.success?
@@ -222,7 +221,7 @@ module GitHooks
     end
     module_function :run_externals
 
-    def start(options = {}) # rubocop:disable Style/CyclomaticComplexity, Style/MethodLength
+    def start(options = {}) # rubocop:disable  CyclomaticComplexity,  MethodLength
       phase = options[:hook] || GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
@@ -237,21 +236,22 @@ module GitHooks
       end
 
       success        = active_hook.run
-      section_length = active_hook.sections.max { |s| s.title.length }
+      section_length = active_hook.sections.maximum { |s| s.title.length }
       sections       = active_hook.sections.select { |section| !section.actions.empty? }
 
+      # TODO: refactor to show this in realtime instead of after the hooks have run
       sections.each do |section|
         hash_tail_length = (section_length - section.title.length)
         printf "===== %s %s===== (%ds)\n", section.colored_name(phase), ('=' * hash_tail_length), section.benchmark
-
         section.actions.each_with_index do |action, index|
-          printf "  %d. [ %s ] %s (%ds)\n", (index + 1), action.state_symbol, action.colored_title, action.benchmark
+          printf "  %d. [ %s ] %s (%ds)\n", (index + 1), action.status_symbol, action.colored_title, action.benchmark
 
           action.errors.each do |error|
-            printf "    %s %s\n", color_bright_red(MARK_FAILURE), error
+            printf "    %s %s\n", GitHooks::FAILURE_SYMBOL, error
           end
 
-          state_string = ( action.success? ? color_bright_green(MARK_SUCCESS) : color_bright_yellow(MARK_UNKNOWN))
+          state_string = action.success? ? GitHooks::SUCCESS_SYMBOL : GitHooks::UNKNOWN_SYMBOL
+
           action.warnings.each do |warning|
             printf "    %s %s\n", state_string, warning
           end
@@ -270,11 +270,11 @@ module GitHooks
     end
     module_function :start
 
-    def load_tests(path, skip_bundler = false) # rubocop:disable MethodLength,Style/CyclomaticComplexity
+    def load_tests(path, skip_bundler = false)
       hooks_root = Pathname.new(path).realpath
-      hooks_path = (p = (hooks_root + 'hooks')).exist? ? p : (hooks_root + '.hooks')
-      hooks_libs = hooks_root + 'libs'
-      gemfile    = hooks_root + 'Gemfile'
+      hooks_path = (p = (hooks_root.join('hooks'))).exist? ? p : (hooks_root.join('.hooks'))
+      hooks_libs = hooks_root.join('libs')
+      gemfile    = hooks_root.join('Gemfile')
 
       if gemfile.exist? && !skip_bundler
         puts "loading Gemfile from: #{gemfile}" if GitHooks.verbose
@@ -286,16 +286,16 @@ module GitHooks
           # executable-hooks gem preloading bundler. hence the following ...
           if defined? Bundler
             [:@settings, :@bundle_path, :@configured, :@definition, :@load].each do |var|
-              Bundler.instance_variable_set(var, nil)
+              ::Bundler.instance_variable_set(var, nil)
             end
           else
             require 'bundler'
           end
-          Bundler.require(:default)
+          ::Bundler.require(:default)
         rescue LoadError
-          puts %Q|Unable to load bundler - please make sure it's installed.|
+          puts %q"Unable to load bundler - please make sure it's installed."
           raise # rubocop:disable SignalException
-        rescue Bundler::GemNotFound => e
+        rescue ::Bundler::GemNotFound => e
           puts "Error: #{e.message}"
           puts 'Did you bundle install your Gemfile?'
           raise # rubocop:disable SignalException
@@ -311,5 +311,7 @@ module GitHooks
       end
     end
     module_function :load_tests
+
+    # rubocop:enable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
   end
 end

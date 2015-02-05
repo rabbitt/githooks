@@ -17,34 +17,37 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 # coding: utf-8
-
-lib = File.expand_path('../lib', __FILE__)
-$:.unshift(lib) unless $:.include?(lib)
+require 'pathname'
+$:.unshift(Pathname.new(__FILE__).dirname.join('lib').to_s)
 require 'githooks'
 
 Gem::Specification.new do |spec|
-  spec.name             = "rabbitt-githooks"
+  spec.name             = 'rabbitt-githooks'
   spec.version          = GitHooks::VERSION
   spec.authors          = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:first).collect(&:strip)
   spec.email            = GitHooks::AUTHOR.scan(/,?\s*([^<]+)<([^>]+)>\s*,?/).collect(&:last).collect(&:strip)
-  spec.description      = "GitHooks provides a framework for building tests that can be used with git hooks"
-  spec.homepage         = "http://github.com/rabbitt/githooks"
-  spec.summary          = "framework for building git hooks tests"
-  spec.license          = "GPLv2"
-  spec.rubygems_version = "2.0.14"
+  spec.description      = 'GitHooks provides a framework for building tests that can be used with git hooks'
+  spec.homepage         = 'http://github.com/rabbitt/githooks'
+  spec.summary          = 'framework for building git hooks tests'
+  spec.license          = 'GPLv2'
+  spec.rubygems_version = '2.0.14'
 
-  spec.files            = `git ls-files`.split($/)
+  spec.files            = %x{ git ls-files }.split($/).grep(%r{^([A-Z]+|lib|bin|.+\.gemspec)})
   spec.executables      = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.test_files       = spec.files.grep(%r{^(test|spec|features)/})
-  spec.require_paths    = ["lib"]
-  spec.extra_rdoc_files = ["README.md", 'LICENSE.txt']
+  spec.require_paths    = ['lib']
+  spec.extra_rdoc_files = ['README.md', 'LICENSE.txt']
 
-  spec.add_dependency 'colorize', '~> 0.5.8'
+  spec.add_dependency 'colorize', '~> 0.7.0'
   spec.add_dependency 'thor', '~> 0.18'
 
   spec.add_development_dependency 'rake', '~> 10.1'
-  spec.add_development_dependency 'rspec', '~> 2.14'
   spec.add_development_dependency 'bundler', '~> 1.3'
+
+  spec.add_development_dependency 'yard', '~> 0.7'
+  spec.add_development_dependency 'rspec', '~> 2.14'
+  spec.add_development_dependency 'simplecov', '~> 0.9'
+
   spec.add_development_dependency 'rubocop', '~> 0.18'
-  spec.add_development_dependency 'ruby-lint', '~> 2.0.1'
+  spec.add_development_dependency 'ruby-lint', '~> 2.0'
 end

@@ -16,8 +16,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
+require_relative 'core_ext/object'
 require_relative 'core_ext/array'
+require_relative 'core_ext/colorize'
 require_relative 'core_ext/numbers'
 require_relative 'core_ext/string'
 require_relative 'core_ext/pathname'
-require_relative 'core_ext/process'
