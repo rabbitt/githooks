@@ -16,22 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require_relative '../numbers/infinity'
+source "http://rubygems.org"
 
-class Array
-  def minimum(&_block)
-    collection = block_given? ? collect { |obj| yield obj } : self
-    collection.inject(Infinity) do |min, num| # rubocop:disable Style/EachWithObject
-      min = num < min ? num : min
-      min
-    end
-  end
-
-  def maximum(&_block)
-    collection = block_given? ? collect { |obj| yield obj } : self
-    collection.inject(0) do |max, num| # rubocop:disable Style/EachWithObject
-      max = num > max ? num : max
-      max
-    end
-  end
-end
+gem 'rubocop', '~> 0.18'
+gem 'ruby-lint', '~> 2.0'

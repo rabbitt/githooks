@@ -17,14 +17,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require 'stringio'
-require 'open3'
 require 'set'
+require 'stringio'
+require 'colorize'
+require_relative 'repository'
 
 module GitHooks
-  class Action # rubocop:disable Style/ClassLength
-    include TerminalColors
-
+  class Action # rubocop:disable Metrics/ClassLength
     attr_reader :title, :section, :on, :limiters
     attr_reader :success, :errors, :warnings, :benchmark
     private :section, :on
@@ -55,9 +54,9 @@ module GitHooks
       status_colorize title
     end
 
-    def state_symbol
-      return status_colorize('?') unless finished?
-      status_colorize success? ? '✓' : 'X'
+    def status_symbol
+      return GitHooks::UNKNOWN_SYMBOL unless finished?
+      success? ? GitHooks::SUCCESS_SYMBOL : GitHooks::FAILURE_SYMBOL
     end
 
     %w(finished running waiting).each do |method|
@@ -66,42 +65,61 @@ module GitHooks
     end
 
     def status_colorize(text)
-      return color_dark_cyan(text) unless finished?
-      success? ? color_bright_green(text) : color_bright_red(text)
+      return text.unknown! unless finished?
+      success? ? text.success! : text.failure!
     end
 
-    def run # rubocop:disable MethodLength
-      warnings, errors = StringIO.new, StringIO.new
+    def run # rubocop:disable MethodLength, AbcSize
+      running!
+      with_benchmark do
+        with_captured_output {
+          begin
+            @success &= @on.call
+          rescue StandardError => e
+            $stderr.puts "Exception thrown during action call: #{e.class.name}: #{e.message}"
+            if GitHooks.debug?
+              $stderr.puts "#{e.class}: #{e.message}:\n\t#{e.backtrace.join("\n\t")}"
+            else
+              hooks_files = e.backtrace.select! { |line| line =~ %r{/hooks/} }
+              hooks_files.collect! { |line| line.split(':')[0..1].join(':') }
+              $stderr.puts "  -> in hook file:line, #{hooks_files.join("\n\t")}" unless hooks_files.empty?
+            end
+            @success = false
+          ensure
+            finished!
+          end
+        }
+      end
+    end
+
+    def with_captured_output(&_block)
+      fail ArgumentError, 'expected block, none given' unless block_given?
 
       begin
-        running!
-        $stdout, $stderr = warnings, errors
-        time_start = Time.now
-        @success &= @on.call
-      rescue => error
-        errors.puts "Exception thrown during action call: #{error.class.name}: #{error.message}"
-
-        if !GitHooks.debug?
-          hooks_files = error.backtrace.select! { |line| line =~ %r{/hooks/} }
-          hooks_files.collect! { |line| line.split(':')[0..1].join(':') }
-          errors.puts "  -> in hook file:line, #{hooks_files.join("\n\t")}" unless hooks_files.empty?
-        else
-          errors.puts "\t#{error.backtrace.join("\n\t")}"
-        end
-
-        @success = false
+        $stdout = warnings = StringIO.new
+        $stderr = errors   = StringIO.new
+        yield
       ensure
-        @benchmark = Time.now - time_start
-        @errors, @warnings = [errors, warnings].collect do |io|
-          io.rewind
-          io.read.split(/\n/)
-        end
-
-        $stdout, $stderr = STDOUT, STDERR
-        finished!
+        @errors   = errors.rewind && errors.read.split(/\n/)
+        @warnings = warnings.rewind && warnings.read.split(/\n/)
+        $stdout   = STDOUT
+        $stderr   = STDERR
       end
+    end
 
-      @success
+    def with_benchmark(&_block)
+      fail ArgumentError, 'expected block, none given' unless block_given?
+      begin
+        start_time = Time.now
+        yield
+      ensure
+        @benchmark = Time.now - start_time
+      end
+    end
+
+    def respond_to_missing?(method, include_private = false)
+      return super unless section.hook.find_command(method)
+      true
     end
 
     def method_missing(method, *args, &block)
@@ -123,15 +141,15 @@ module GitHooks
     end
 
     def on_all_files(&block)
-      @on = ->() { block.call manifest }
+      @on = -> { block.call manifest }
     end
 
     def on_argv(&block)
-      @on = ->() { block.call section.hook.args }
+      @on = -> { block.call section.hook.args }
     end
 
     def on(*args, &block)
-      @on = ->() { block.call(*args) }
+      @on = -> { block.call(*args) }
     end
 
   private
@@ -141,19 +159,15 @@ module GitHooks
     end
 
     def run_command(command, *args, &block)
-      options = args.extract_options
-      prefix  = options.delete(:prefix_output)
-      args << options
+      prefix = nil
+      args.extract_options.tap { |options|
+        prefix = options.delete(:prefix_output)
+      }
 
-      command.execute(*args, &block).tap do |res|
-        res.output.split(/\n/).each do |line|
-          $stdout.puts prefix ? "#{prefix}: #{line}" : line
-        end
-
-        res.error.split(/\n/).each do |line|
-          $stderr.puts prefix ? "#{prefix}: #{line}" : line
-        end
-      end.status.success?
+      result = command.execute(*args, &block)
+      result.output_lines(prefix).each { |line| puts line }
+      result.error_lines(prefix).each { |line| puts line }
+      result.status.success?
     end
   end
 end

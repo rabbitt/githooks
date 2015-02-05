@@ -1,6 +1,13 @@
 require 'githooks'
 
-RUBY_FILE_REGEXP = %r{^((app|lib)/.+\.rb|bin/.+)$}.freeze
+RUBY_FILE_REGEXP = %r[
+  ^(
+    Rakefile |
+    .+\.gemspec |
+    lib/.+\.(task|rb) |
+    bin/.+
+  )$
+]ix.freeze
 
 GitHooks::Hook.register 'pre-commit' do
   commands :ruby, :rubocop
@@ -19,8 +26,9 @@ GitHooks::Hook.register 'pre-commit' do
       limit(:type).to :modified, :added, :untracked, :tracked
       limit(:path).to RUBY_FILE_REGEXP
 
+      rubocop_config = Pathname.new(__FILE__).dirname.join('configs', '.rubocop.yml').to_s
       on_all_files do |files|
-        rubocop '-D', '--format', 'clang', files.collect(&:path), strip_empty_lines: true
+        rubocop '-c', rubocop_config, '-D', '--format', 'clang', files.collect(&:path), strip_empty_lines: true
       end
     end
 
@@ -33,7 +41,7 @@ GitHooks::Hook.register 'pre-commit' do
           matches.each do |line_number, line_text|
             line_text.gsub!(/^[ ]*(\t+)/) do
               underscores = '_' * $1.size
-              color_bright_red(underscores)
+              bright_red(underscores)
             end
             $stderr.printf "%s:%#{matches.last.first.to_s.size}d: %s\n", file.path, line_number, line_text
           end

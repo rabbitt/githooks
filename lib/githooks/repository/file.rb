@@ -17,16 +17,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require 'ostruct'
 require 'delegate'
-
-# allow for reloading of class
-unless defined? DiffIndexEntryDelegateClass
-  DiffIndexEntryDelegateClass = DelegateClass(GitHooks::Repository::DiffIndexEntry)
-end
 
 module GitHooks
   class Repository
+    # allow for reloading of class
+    unless defined? DiffIndexEntryDelegateClass
+      DiffIndexEntryDelegateClass = DelegateClass(DiffIndexEntry)
+    end
+
     class File < DiffIndexEntryDelegateClass
       def initialize(entry)
         unless entry.is_a? Repository::DiffIndexEntry
@@ -68,7 +67,7 @@ module GitHooks
         end
       end
 
-      def match(type, selector)
+      def match(type, selector) # rubocop:disable AbcSize
         value = attribute_value(type)
         return selector.call(value) if selector.respond_to? :call
 
@@ -121,6 +120,14 @@ module GitHooks
       def lines(strip_newlines = false)
         return [] unless fd
         strip_newlines ? fd.readlines.collect(&:chomp!) : fd.readlines
+      end
+
+      def <=>(other)
+        path.to_s <=> other.path.to_s
+      end
+
+      def ==(other)
+        path.to_s == other.path.to_s
       end
     end
   end

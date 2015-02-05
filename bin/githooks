@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 
 if ENV['GITHOOKS_DEV']
-  $:.unshift(File.expand_path(File.join(File.expand_path(__FILE__), '/../../lib')))
+  require 'pathname'
+  $:.unshift Pathname.new(__FILE__).dirname.parent.join('lib').realpath.to_s
 end
 require 'githooks'
 
