@@ -1,9 +1,12 @@
 require 'thor'
+require_relative 'hook'
+require_relative 'runner'
 
 module GitHooks
   module CLI
     autoload :Config, 'githooks/commands/config'
 
+    # rubocop:disable AbcSize
     class Base < Thor
       class_option :verbose, aliases: '-v', type: :boolean, desc: 'verbose output', default: false
       class_option :debug, aliases: '-d', type: :boolean, desc: 'debug output', default: false
@@ -18,7 +21,7 @@ module GitHooks
       method_option :repo, aliases: '-r', type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
       method_option :hooks, { # rubocop:disable BracesAroundHashParameters
         type: :array,
-        desc: 'Path to repo to run tests on',
+        desc: 'hooks to attach',
         enum: Hook::VALID_PHASES,
         default: Hook::VALID_PHASES
       }
@@ -27,7 +30,7 @@ module GitHooks
         GitHooks.debug = !!options['debug']
 
         unless options['script'] || options['path']
-          fail ArgumentError, %q|Neither 'path' nor 'script' were specified - please provide at least one.|
+          fail ArgumentError, %q"Neither 'path' nor 'script' were specified - please provide at least one."
         end
 
         Runner.attach(options)
@@ -72,9 +75,9 @@ module GitHooks
       method_option :repo, aliases: '-r', type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
       method_option :'skip-pre', type: :boolean, desc: 'Skip PreRun Scripts', default: false
       method_option :'skip-post', type: :boolean, desc: 'Skip PostRun Scripts', default: false
-      method_option :'skip-bundler', type: :boolean, desc: %Q|Don't load bundler gemfile|, default: false
+      method_option :'skip-bundler', type: :boolean, desc: %q"Don't load bundler gemfile", default: false
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
-      def execute(*args)
+      def execute
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
 
@@ -82,10 +85,10 @@ module GitHooks
 
         if opts['staged']
           if opts['tracked']
-            warn %q|--tracked conflicts with --staged. Dropping --tracked...|
+            warn '--tracked conflicts with --staged. Dropping --tracked...'
             opts['tracked'] = false
           elsif opts['untracked']
-            warn %q|--untracked conflicts with --staged. Dropping --untracked...|
+            warn '--untracked conflicts with --staged. Dropping --untracked...'
             opts['untracked'] = false
           end
         end

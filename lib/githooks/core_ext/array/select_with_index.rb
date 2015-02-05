@@ -5,7 +5,7 @@ class Array
         if regexp.is_a? Regexp
           collection << [index, node] if node =~ regexp
         elsif block_given?
-          collection << [index, node] if yield(node)
+          collection << [index, node] if block.call(node)
         end
       end
     end

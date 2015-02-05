@@ -1,0 +1,14 @@
+desc 'Start IRB with githooks environment loaded'
+task :console do
+  require 'pathname'
+  require 'bundler'
+  Bundler.setup(:default, :development)
+
+  lib_path = Pathname.new(__FILE__).join('../../../lib').realpath
+  $LOAD_PATH.unshift(lib_path.to_s)
+
+  ARGV.clear
+  require 'irb'
+  require 'irb/completion'
+  IRB.start
+end

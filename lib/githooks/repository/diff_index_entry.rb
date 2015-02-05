@@ -1,6 +1,5 @@
 require 'ostruct'
 require 'pathname'
-require 'githooks/repository/file'
 
 module GitHooks
   class Repository
@@ -31,7 +30,8 @@ module GitHooks
         super parse_data(entry)
       end
 
-      def parse_data(entry) # rubocop:disable MethodLength
+      # rubocop:disable MultilineOperationIndentation
+      def parse_data(entry) # rubocop:disable MethodLength, AbcSize
         data = Hash[
           DIFF_STRUCTURE_REGEXP.names.collect(&:to_sym).zip(
             entry.match(DIFF_STRUCTURE_REGEXP).captures
@@ -53,6 +53,7 @@ module GitHooks
           score: data[:score].to_i
         }
       end
+      # rubocop:enable MultilineOperationIndentation
 
       def to_repo_file
         Repository::File.new(self)

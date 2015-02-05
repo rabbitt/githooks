@@ -17,18 +17,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require 'ostruct'
-require 'singleton'
-require 'open3'
-
 module GitHooks
   class Repository
     class Config # rubocop:disable ClassLength
       OPTIONS = {
-        'path' => { type: :path, multiple: false },
-        'script' => { type: :path, multiple: false },
-        'pre-run-execute' => { type: :path, multiple: true },
-        'post-run-execute' => { type: :path, multiple: true }
+        'path'             => { type: :path, multiple: false },
+        'script'           => { type: :path, multiple: false },
+        'pre-run-execute'  => { type: :path, multiple: true },
+        'post-run-execute' => { type: :path, multiple: true },
       }
 
       def initialize(path = Dir.getwd)
@@ -49,7 +45,7 @@ module GitHooks
         send(option.gsub('-', '_'))
       end
 
-      def set(option, value, options = {}) # rubocop:disable CyclomaticComplexity, MethodLength
+      def set(option, value, options = {}) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
         unless OPTIONS.keys.include? option
           fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
         end
@@ -82,11 +78,11 @@ module GitHooks
 
         if overwrite && !self[option].nil? && !self[option].empty?
           puts "Overwrite requested for option '#{option}'" if GitHooks.verbose
-          unset(option, repo_path: repo, global: global)
+          unset(option, repo_chdir: repo, global: global)
         end
 
         option = "githooks.#{repo}.#{option}"
-        git_command(global ? '--global' : '--local', var_type, add_type, option, value, path: repo).tap do |result|
+        git(global ? '--global' : '--local', var_type, add_type, option, value, chdir: repo).tap do |result|
           puts "Added option #{option} with value #{value}" if result.status.success?
         end
       end
@@ -95,10 +91,10 @@ module GitHooks
         repo   = options.delete(:repo_path) || repo_path
         global = (opt = options.delete(:global)).nil? ? false : opt
         option = "githooks.#{repo}"
-        git_command(global ? '--global' : '--local', '--remove-section', option, path: repo)
+        git(global ? '--global' : '--local', '--remove-section', option, chdir: repo)
       end
 
-      def unset(option, *args) # rubocop:disable Style/CyclomaticComplexity
+      def unset(option, *args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
         unless OPTIONS.keys.include? option
           fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
         end
@@ -111,9 +107,9 @@ module GitHooks
         value_regex = args.first
 
         if options.delete(:all) || value_regex.nil?
-          git_command(global ? '--global' : '--local', '--unset-all', option, path: repo)
+          git(global ? '--global' : '--local', '--unset-all', option, chdir: repo)
         else
-          git_command(global ? '--global' : '--local', '--unset', option, value_regex, path: repo)
+          git(global ? '--global' : '--local', '--unset', option, value_regex, chdir: repo)
         end.tap do |result|
           puts "Unset option #{option.git_option_path_split.last}" if result.status.success?
         end
@@ -140,16 +136,16 @@ module GitHooks
         @repository.root_path
       end
 
-      def git_command(*args)
+      def git(*args)
         args = ['config', *args].flatten
-        @repository.git_command(*args)
+        @repository.git(*args)
       end
 
-      def config(path = nil) # rubocop:disable MethodLength, CyclomaticComplexity
+      def config(path = nil) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
         path ||= repo_path
 
-        raw_config = git_command('--list', path: path).output.split("\n")
-        raw_config.sort.uniq.inject({}) do |hash, line|
+        raw_config = git('--list', chdir: path).output.split("\n")
+        raw_config.sort.uniq.each_with_object({}) do |line, hash|
           key, value = line.split(/\s*=\s*/)
           key_parts = key.git_option_path_split
 
@@ -167,10 +163,6 @@ module GitHooks
 
           hash
         end
-      end
-
-      def git
-        @repository.git
       end
     end
   end

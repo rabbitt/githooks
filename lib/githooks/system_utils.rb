@@ -1,7 +1,8 @@
-# encoding: utf-8
+# sublime: x_syntax Packages/Ruby/Ruby.tmLanguage
+# sublime: translate_tabs_to_spaces true; tab_size 2
+
 require 'pathname'
-require 'open3'
-require 'ostruct'
+require 'tempfile'
 require 'shellwords'
 
 module GitHooks
@@ -22,7 +23,7 @@ module GitHooks
     end
     module_function :find_bin
 
-    def with_path(path, &block)
+    def with_path(path, &_block)
       fail ArgumentError, 'Missing required block' unless block_given?
       begin
         cwd = Dir.getwd
@@ -34,7 +35,7 @@ module GitHooks
     end
     module_function :with_path
 
-    def quiet(&block)
+    def quiet(&_block)
       od, ov = GitHooks.debug, GitHooks.verbose
       GitHooks.debug, GitHooks.verbose = false, false
       yield
@@ -43,67 +44,151 @@ module GitHooks
     end
     module_function :quiet
 
+    def command(name)
+      (@commands ||= {})[name] ||= begin
+        Command.new(name).tap { |cmd|
+          define_method("command_#{cmd.name}") { |*args| cmd.execute(*args) }
+          alias_method cmd.method, "command_#{cmd.name}"
+        }
+      end
+    end
+    module_function :command
+
+    def commands(*names)
+      names.each { |name| command(name) }
+    end
+    module_function :commands
+
     class Command
       include Shellwords
 
-      attr_reader :aliases, :path, :name
-      def initialize(name, options = {})
-        @name = name
-        @path = options.delete(:path) || SystemUtils.which(name)
+      ENV_WHITELIST = %w(
+        PATH HOME LDFLAGS CPPFLAGS DISPLAY EDITOR
+        LANG LC_ALL SHELL SHLVL TERM TMPDIR USER
+        SSH_USER SSH_AUTH_SOCK
+        GEM_HOME GEM_PATH MY_RUBY_HOME
+      )
 
-        @aliases = options.delete(:aliases) || []
-        @aliases << name
-        @aliases.collect! { |alias_name| normalize(alias_name) }
-        @aliases.uniq!
-      end
-
-      def command_path
-        path || name.to_s
-      end
-
-      def build_command(args, options = {})
-        change_to_path = options['path'] || options[:path]
-
-        args = [args].flatten
-        args.collect! { |arg| arg.is_a?(Repository::File) ? arg.path.to_s : arg }
-        args.collect!(&:to_s)
-
-        command = shelljoin([command_path] | args)
-        command = ("cd #{shellescape(change_to_path.to_s)} ; " + command) unless change_to_path.nil?
-        command
-      end
-
-      def execute(*args, &block) # rubocop:disable MethodLength, CyclomaticComplexity
-        options = args.extract_options
-        strip_empty_lines = !!options.delete(:strip_empty_lines)
-
-        command = build_command(args, options)
-        result = OpenStruct.new(output: nil, error: nil, status: nil).tap do |r|
-          puts "#{Dir.getwd} $ #{command}" if GitHooks.debug
-
-          r.output, r.error, r.status = if RUBY_ENGINE == 'jruby'
-            _, o, e, t = Open3.popen3('/usr/bin/env', 'sh', '-c', command)
-            [o.read, e.read, t.value]
-          else
-            Open3.capture3(command)
-          end
-
-          if strip_empty_lines
-            r.output = r.output.strip_empty_lines!
-            r.error  = r.error.strip_empty_lines!
-          end
+      class Result
+        attr_reader :output, :error, :status
+        def initialize(output, error, status)
+          @output = output.strip
+          @error  = error.strip
+          @status = status
         end
 
-        puts result.inspect if GitHooks.debug
+        def output_lines(prefix = nil)
+          @output.split(/\n/).collect { |line|
+            prefix ? "#{prefix}: #{line}" : line
+          }
+        end
 
-        block_given? ? yield(result) : result
+        def error_lines(prefix = nil)
+          @error.split(/\n/).collect { |line|
+            prefix ? "#{prefix}: #{line}" : line
+          }
+        end
+
+        def sanitize!(*args)
+          @output.sanitize!(*args)
+          @error.sanitize!(*args)
+        end
+
+        def success?
+          status? ? @status.success? : false
+        end
+
+        def failure?
+          !success?
+        end
+
+        def status?
+          !!@status
+        end
+
+        def exitstatus
+          status? ? @status.exitstatus : -1
+        end
+        alias_method :code, :exitstatus
+      end
+
+      attr_reader :run_path, :bin_path, :name
+
+      def initialize(name, options = {})
+        @bin_path = options.delete(:bin_path) || SystemUtils.which(name) || name
+        @run_path = options.delete(:chdir)
+        @name     = name.to_s.gsub(/([\W-]+)/, '_')
+      end
+
+      def method
+        @name.to_sym
+      end
+
+      def build_command(args, options)
+        Array(args).unshift(command_path(options))
+      end
+
+      def command_path(options = {})
+        options.delete(:use_name) ? name : bin_path.to_s
+      end
+
+      def prep_env(env = {})
+        Hash[env].each_with_object([]) do |(k, v), array|
+          array << %Q|#{k}="#{v}"| if ENV_WHITELIST.include? k
+        end.join(' ')
+      end
+
+      def execute(*args, &_block) # rubocop:disable MethodLength, CyclomaticComplexity, AbcSize, PerceivedComplexity
+        options = args.extract_options!
+
+        command = build_command(args, options)
+        command.unshift("cd #{run_path} ;") if run_path
+        command.unshift('sudo') if options.delete(:use_sudo)
+        command = Array(command.flatten.join(' '))
+
+        command.unshift options.delete(:pre_pipe)  if options[:pre_pipe]
+        command.push options.delete(:post_pipe) if options[:post_pipe]
+        command = Array(command.flatten.join('|'))
+
+        command.unshift options.delete(:pre_run)  if options[:pre_run]
+        command.push options.delete(:post_run) if options[:post_run]
+        command = shellwords(command.flatten.join(';'))
+
+        environment = prep_env(options.delete(:env) || ENV)
+
+        error_file = Tempfile.new('ghstderr')
+        begin
+          real_command = %Q{
+            /usr/bin/env -i #{environment} bash -c '
+              ( #{command.join(' ').gsub("'", %q|'"'"'|)}) 2>#{error_file.path}
+            '
+          }
+
+          $stderr.puts real_command if GitHooks.debug?
+
+          output = %x{ #{real_command} }
+          result = Result.new(output, error_file.read, $?)
+
+          if GitHooks.verbose? && result.failure?
+            STDERR.puts "Command failed with exit code [#{result.status.exitstatus}]",
+                        "ENVIRONMENT:\n\t#{environment}\n\n",
+                        "COMMAND:\n\t#{command.join(' ')}\n\n",
+                        "OUTPUT:\n-----\n#{result.output}\n-----\n\n",
+                        "ERROR:\n-----\n#{result.error}\n-----\n\n"
+          end
+
+          sanitize = [ :strip, :non_printable ]
+          sanitize << :colors unless options.delete(:color)
+          sanitize << :empty_lines if options.delete(:strip_empty_lines)
+          result.sanitize!(*sanitize)
+
+          block_given? ? yield(result) : result
+        ensure
+          error_file.close
+          error_file.unlink
+        end
       end
       alias_method :call, :execute
-
-      def normalize(name)
-        name.to_s.gsub(/[^a-z_]+/, '_')
-      end
-      private :normalize
     end
   end
 end

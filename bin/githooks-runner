@@ -1,8 +1,16 @@
 #!/usr/bin/env ruby
-# rubocop:disable Style/FileName
+# rubocop:disable FileName
 
 if ENV['GITHOOKS_DEV']
-  $:.unshift(File.expand_path(File.join(File.expand_path(__FILE__), '/../../lib')))
+  require 'pathname'
+  path = Pathname.new(__FILE__).dirname
+  $:.unshift(
+    if path.to_s.end_with? '.git/hooks'
+      path.parent.parent
+    else
+      path.parent
+    end.join('lib').realpath.to_s
+  )
 end
 require 'githooks'
 
