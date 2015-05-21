@@ -285,9 +285,12 @@ module GitHooks
           # stupid RVM polluting my environment without asking via it's
           # executable-hooks gem preloading bundler. hence the following ...
           if defined? Bundler
-            [:@settings, :@bundle_path, :@configured, :@definition, :@load].each do |var|
+            [:@bundle_path, :@configured, :@definition, :@load].each do |var|
               Bundler.instance_variable_set(var, nil)
             end
+            # bundler tests for @settings using defined? - which means we need
+            # to forcibly remove it.
+            Bundler.send(:remove_instance_variable, :@settings)
           else
             require 'bundler'
           end
