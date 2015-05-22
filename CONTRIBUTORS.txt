@@ -1,0 +1,2 @@
+Miscellaneous Bugfixes:
+  - Robert Widmer (https://github.com/rdubya)
