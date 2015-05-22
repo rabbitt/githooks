@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 
-if ENV['GITHOOKS_DEV']
-  require 'pathname'
-  $:.unshift Pathname.new(__FILE__).dirname.parent.join('lib').realpath.to_s
+if ENV.include? 'GITHOOKS_DEV'
+  $:.unshift File.expand_path('../../lib', __FILE__)
 end
 require 'githooks'
 
@@ -12,5 +11,4 @@ rescue GitHooks::Error => e
   puts e.message
   exit 1
 end
-
 exit 0

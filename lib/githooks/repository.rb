@@ -59,15 +59,17 @@ module GitHooks
       instance.public_send(method, *args, &block)
     end
 
-    attr_reader :root_path
+    attr_reader :path, :hooks
+    alias_method :path, :path
 
     def initialize(path = Dir.getwd)
-      @root_path = get_root_path(path)
+      @path  = get_root_path(path)
+      @hooks = Pathname.new(@path).join('.git', 'hooks')
     end
     protected :initialize
 
     def config
-      @config ||= Repository::Config.new(root_path)
+      @config ||= Repository::Config.new(path)
     end
 
     def get_root_path(path)
@@ -140,10 +142,13 @@ module GitHooks
         cmd << (options.delete(:ref) || 'HEAD')
       end
 
-      git(*cmd.compact.compact).output_lines.collect do |diff_data|
+      git(*cmd.flatten.compact).output_lines.collect do |diff_data|
         DiffIndexEntry.new(diff_data).to_repo_file
       end
-    rescue
+    rescue StandardError => e
+      puts 'Error Encountered while acquiring manifest'
+      puts "Command: git #{cmd.flatten.compact.join(' ')}"
+      puts "Error: #{e.class.name}: #{e.message}: #{e.backtrace[0..5].join("\n\t")}"
       exit! 1
     end
 

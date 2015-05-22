@@ -20,15 +20,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 require 'pathname'
 require 'githooks/error'
 require 'githooks/core_ext'
-require 'githooks/core_ext/colorize'
 require 'githooks/version'
 
 module GitHooks
-  AUTHOR = 'Carl P. Corliss <rabbitt@gmail.com>'
-
   autoload :Config,         'githooks/config'
-  autoload :CommandRunner,  'githooks/command'
-  autoload :Command,        'githooks/command'
   autoload :CLI,            'githooks/cli'
   autoload :Hook,           'githooks/hook'
   autoload :Section,        'githooks/section'
@@ -38,7 +33,7 @@ module GitHooks
   autoload :SystemUtils,    'githooks/system_utils'
 
   class << self
-    attr_reader :debug, :verbose, :ignore_script
+    attr_reader :debug, :verbose, :ignore_script, :hooks_root
 
     def debug?
       return true if ENV['GITHOOKS_DEBUG']
@@ -71,6 +66,10 @@ module GitHooks
         when 'githooks', 'irb', '', nil then 'pre-commit'
         else GitHooks::HOOK_NAME
       end
+    end
+
+    def hooks_root=(value)
+      @hooks_root = Pathname.new(value)
     end
   end
 

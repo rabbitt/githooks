@@ -18,8 +18,8 @@ module GitHooks
 
       def self.from_file_path(path, tracked = false)
         path = Pathname.new(path)
-        entry_line = sprintf(":%06o %06o %040x %040x %s\t%s",
-                             0, path.stat.mode, 0, 0, (tracked ? '^' : '?'), path.to_s)
+        entry_line = format(":%06o %06o %040x %040x %s\t%s",
+                            0, path.stat.mode, 0, 0, (tracked ? '^' : '?'), path.to_s)
         new(entry_line)
       end
 

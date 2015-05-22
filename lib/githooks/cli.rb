@@ -4,12 +4,20 @@ require_relative 'runner'
 
 module GitHooks
   module CLI
-    autoload :Config, 'githooks/commands/config'
+    autoload :Config, 'githooks/cli/config'
 
     # rubocop:disable AbcSize
     class Base < Thor
       class_option :verbose, aliases: '-v', type: :boolean, desc: 'verbose output', default: false
       class_option :debug, aliases: '-d', type: :boolean, desc: 'debug output', default: false
+
+      desc :version, 'display version information'
+      def version
+        puts "GitHooks: #{GitHooks::VERSION}"
+        puts "Git     : #{%x{git --version | grep git}.split(/\s+/).last}"
+        puts "Bundler : #{Bundler::VERSION}"
+        puts "Ruby    : #{RUBY_ENGINE} #{RUBY_VERSION}p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE})"
+      end
 
       # githook attach [--hook <hook1,hookN>] [--script <path> | --path <path>] [--bootstrap <path>]
       #   --  attaches the listed hooks (or all if none specified) to the githook runner
@@ -33,7 +41,7 @@ module GitHooks
           fail ArgumentError, %q"Neither 'path' nor 'script' were specified - please provide at least one."
         end
 
-        Runner.attach(options)
+        Runner.new(options.dup).attach
       end
 
       # githook dettach [--hook <hook1,hookN>]
@@ -49,7 +57,7 @@ module GitHooks
       def detach
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
-        Runner.detach(options['repo'], options['hooks'])
+        Runner.new(options.dup).detach(options['hooks'])
       end
 
       # githook list [--hook <hook1,hook2,hookN>]
@@ -59,7 +67,7 @@ module GitHooks
       def list
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
-        Runner.list(options['repo'])
+        Runner.new(options.dup).list
       end
 
       # githooks execute [--[no-]staged] [--tracked] [--untracked] [--args -- one two three ...]
@@ -78,10 +86,11 @@ module GitHooks
       method_option :'skip-bundler', type: :boolean, desc: %q"Don't load bundler gemfile", default: false
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
       def execute
-        GitHooks.verbose = !!options['verbose']
-        GitHooks.debug = !!options['debug']
+        GitHooks.verbose = options['verbose']
+        GitHooks.debug = options['debug']
 
-        opts = (options).dup
+        opts = options.dup
+        opts['staged'] ||= !(opts['tracked'] || opts['untracked'])
 
         if opts['staged']
           if opts['tracked']
@@ -93,9 +102,9 @@ module GitHooks
           end
         end
 
-        opts['staged'] = !(opts['tracked'] || opts['untracked']) if opts['staged'].nil?
+        opts['skip-bundler'] ||= !!ENV['GITHOOKS_SKIP_BUNDLER']
 
-        GitHooks::Runner.run(opts)
+        Runner.new(opts).run
       end
 
       desc :config, 'manage githooks configuration'

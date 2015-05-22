@@ -14,8 +14,8 @@ module GitHooks
 
     def find_bin(name)
       # rubocop:disable MultilineBlockChain, Blocks
-      ENV['PATH'].split(/:/).collect {
-        |path| Pathname.new(path) + name.to_s
+      ENV['PATH'].split(/:/).collect { |path|
+        Pathname.new(path) + name.to_s
       }.select { |path|
         path.exist? && path.executable?
       }.collect(&:to_s)
@@ -67,10 +67,12 @@ module GitHooks
         LANG LC_ALL SHELL SHLVL TERM TMPDIR USER
         SSH_USER SSH_AUTH_SOCK
         GEM_HOME GEM_PATH MY_RUBY_HOME
-      )
+        GIT_DIR GIT_AUTHOR_DATE GIT_INDEX_FILE GIT_AUTHOR_NAME GIT_PREFIX GIT_AUTHOR_EMAIL
+      ) unless defined? ENV_WHITELIST
 
       class Result
-        attr_reader :output, :error, :status
+        attr_accessor :output, :error
+        attr_reader :status
         def initialize(output, error, status)
           @output = output.strip
           @error  = error.strip
@@ -135,7 +137,7 @@ module GitHooks
       def prep_env(env = {})
         Hash[env].each_with_object([]) do |(k, v), array|
           array << %Q|#{k}="#{v}"| if ENV_WHITELIST.include? k
-        end.join(' ')
+        end
       end
 
       def execute(*args, &_block) # rubocop:disable MethodLength, CyclomaticComplexity, AbcSize, PerceivedComplexity
@@ -154,27 +156,39 @@ module GitHooks
         command.push options.delete(:post_run) if options[:post_run]
         command = shellwords(command.flatten.join(';'))
 
-        environment = prep_env(options.delete(:env) || ENV)
+        environment = prep_env(options.delete(:env) || ENV).join(' ')
 
         error_file = Tempfile.new('ghstderr')
-        begin
-          real_command = %Q{
-            /usr/bin/env -i #{environment} bash -c '
-              ( #{command.join(' ').gsub("'", %q|'"'"'|)}) 2>#{error_file.path}
-            '
-          }
 
-          $stderr.puts real_command if GitHooks.debug?
+        script_file = Tempfile.new('ghscript')
+        script_file.puts "exec 2>#{error_file.path}"
+        script_file.puts command.join(' ')
+
+        script_file.rewind
+
+        begin
+          real_command = "/usr/bin/env -i #{environment} bash #{script_file.path}"
+
+          if GitHooks.verbose?
+            $stderr.puts "Command Line  :\n----\n#{real_command}\n----\n"
+            $stderr.puts "Command Script:\n----\n#{script_file.read}\n----\n"
+          end
 
           output = %x{ #{real_command} }
           result = Result.new(output, error_file.read, $?)
 
-          if GitHooks.verbose? && result.failure?
-            STDERR.puts "Command failed with exit code [#{result.status.exitstatus}]",
-                        "ENVIRONMENT:\n\t#{environment}\n\n",
-                        "COMMAND:\n\t#{command.join(' ')}\n\n",
-                        "OUTPUT:\n-----\n#{result.output}\n-----\n\n",
-                        "ERROR:\n-----\n#{result.error}\n-----\n\n"
+          if GitHooks.verbose?
+            if result.failure?
+              STDERR.puts "Command failed with exit code [#{result.status.exitstatus}]",
+                          "ENVIRONMENT:\n\t#{environment}\n\n",
+                          "COMMAND:\n\t#{command.join(' ')}\n\n",
+                          "OUTPUT:\n-----\n#{result.output}\n-----\n\n",
+                          "ERROR:\n-----\n#{result.error}\n-----\n\n"
+            else
+              STDERR.puts "Command succeeded with exit code [#{result.status.exitstatus}]",
+                          "OUTPUT:\n-----\n#{result.output}\n-----\n\n",
+                          "ERROR:\n-----\n#{result.error}\n-----\n\n"
+            end
           end
 
           sanitize = [ :strip, :non_printable ]
@@ -182,8 +196,11 @@ module GitHooks
           sanitize << :empty_lines if options.delete(:strip_empty_lines)
           result.sanitize!(*sanitize)
 
-          block_given? ? yield(result) : result
+          result.tap { yield(result) if block_given? }
         ensure
+          script_file.close
+          script_file.unlink
+
           error_file.close
           error_file.unlink
         end

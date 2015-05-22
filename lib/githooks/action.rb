@@ -19,7 +19,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 require 'set'
 require 'stringio'
-require 'colorize'
 require_relative 'repository'
 
 module GitHooks
@@ -35,7 +34,7 @@ module GitHooks
       @title     = title
       @section   = section
       @on        = nil
-      @limiters  = Set.new
+      @limiters  = section.limiters
       @success   = true
       @errors    = []
       @warnings  = []
@@ -118,8 +117,7 @@ module GitHooks
     end
 
     def respond_to_missing?(method, include_private = false)
-      return super unless section.hook.find_command(method)
-      true
+      section.hook.find_command(method) || super
     end
 
     def method_missing(method, *args, &block)
@@ -130,10 +128,27 @@ module GitHooks
 
     # DSL Methods
 
+    def config_path
+      GitHooks.hooks_root.join('configs')
+    end
+
+    def config_file(*path_components)
+      config_path.join(*path_components)
+    end
+
+    def lib_path
+      GitHooks.hooks_root.join('lib')
+    end
+
+    def lib_file(*path_components)
+      lib_path.join(*path_components)
+    end
+
     def limit(type)
-      (find_limiter(type) || Repository::Limiter.new(type)).tap do |limiter|
-        @limiters << limiter
+      unless @limiters.include? type
+        @limiters[type] ||= Repository::Limiter.new(type)
       end
+      @limiters[type]
     end
 
     def on_each_file(&block)
@@ -153,10 +168,6 @@ module GitHooks
     end
 
   private
-
-    def find_limiter(type)
-      @limiters.select { |l| l.type == type }.first
-    end
 
     def run_command(command, *args, &block)
       prefix = nil

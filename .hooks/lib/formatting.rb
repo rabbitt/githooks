@@ -1,13 +1,14 @@
 require 'githooks'
 
-RUBY_FILE_REGEXP = Regexp.new(%w[
+RUBY_FILE_REGEXP = %r:
   ^(
     Rakefile |
     .+\.gemspec |
     lib/.+\.(task|rb) |
-    bin/.+
+    bin/.+ |
+    .hooks/.+?\.rb
   )$
-].join)
+:xi
 
 GitHooks::Hook.register 'pre-commit' do
   commands :ruby, :rubocop

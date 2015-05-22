@@ -30,7 +30,7 @@ module GitHooks
 
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug   = !!options['debug']
-        options['repo'] ||= GitHooks::Repository.root_path
+        options['repo'] ||= GitHooks::Repository.path
 
         repo_data = GitHooks::Repository::Config.new.get(
           option_name,
@@ -59,7 +59,7 @@ module GitHooks
       def set(option_name, option_value) # rubocop:disable AbcSize
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug   = !!options['debug']
-        options['repo'] ||= GitHooks::Repository.root_path
+        options['repo'] ||= GitHooks::Repository.path
 
         GitHooks::Repository::Config.new.set(
           option_name,
@@ -76,7 +76,7 @@ module GitHooks
       def unset(option_name, option_value = nil) # rubocop:disable AbcSize
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug   = !!options['debug']
-        options['repo'] ||= GitHooks::Repository.root_path
+        options['repo'] ||= GitHooks::Repository.path
 
         GitHooks::Repository::Config.new.unset(
           option_name,
@@ -93,7 +93,7 @@ module GitHooks
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug   = !!options['debug']
 
-        options['repo'] ||= GitHooks::Repository.root_path
+        options['repo'] ||= GitHooks::Repository.path
         config = GitHooks::Repository::Config.new
 
         githooks = config.list(global: options['global'], repo_path: options['repo'])['githooks']

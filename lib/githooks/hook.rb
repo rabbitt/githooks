@@ -22,7 +22,7 @@ require_relative 'system_utils'
 
 module GitHooks
   class Hook
-    VALID_PHASES = %w{ pre-commit commit-msg }.freeze
+    VALID_PHASES = %w{ pre-commit commit-msg }.freeze unless defined? VALID_PHASES
 
     @__phases__ = {}
     @__mutex__  = Mutex.new
@@ -61,19 +61,19 @@ module GitHooks
       end
     end
 
-    attr_reader :sections, :phase, :repository, :repository_path
+    attr_reader :sections, :phase, :repository, :repository_path, :limiters
     attr_accessor :args, :staged, :untracked, :tracked
 
     def initialize(phase)
-      @phase     = phase.to_s
-      @sections  = {}
-      @commands  = []
-      @args      = []
-      @staged    = true
-      @tracked   = false
-      @untracked = false
-
-      repository_path = Dir.getwd # rubocop:disable UselessAssignment
+      @phase      = phase.to_s
+      @sections   = {}
+      @limiters   = {}
+      @commands   = []
+      @args       = []
+      @staged     = true
+      @tracked    = false
+      @untracked  = false
+      @repository = Repository.new(Dir.getwd)
     end
 
     def [](name)
@@ -116,6 +116,29 @@ module GitHooks
     end
 
     # DSL methods
+
+    def config_path
+      GitHooks.hooks_root.join('configs')
+    end
+
+    def config_file(*path_components)
+      config_path.join(*path_components)
+    end
+
+    def lib_path
+      GitHooks.hooks_root.join('lib')
+    end
+
+    def lib_file(*path_components)
+      lib_path.join(*path_components)
+    end
+
+    def limit(type)
+      unless @limiters.include? type
+        @limiters[type] ||= Repository::Limiter.new(type)
+      end
+      @limiters[type]
+    end
 
     def command(name, options = {})
       setup_command name, options
@@ -160,8 +183,8 @@ module GitHooks
 
       def filter(limiters)
         manifest.dup.tap do |files|
-          limiters.each do |limiter|
-            puts "Limiter [#{limiter.type}] -> (#{limiter.only.inspect}) match against: " if GitHooks.debug?
+          limiters.each do |type, limiter|
+            puts "Limiter [#{type}] -> (#{limiter.only.inspect}) match against: " if GitHooks.debug?
             limiter.limit(files)
           end
         end

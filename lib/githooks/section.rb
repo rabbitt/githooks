@@ -21,10 +21,10 @@ require 'delegate'
 
 module GitHooks
   class Section < DelegateClass(Array)
-    attr_reader :name, :hook, :success, :actions, :benchmark
+    attr_reader :name, :hook, :success, :actions, :benchmark, :limiters
+
     alias_method :title, :name
     alias_method :success?, :success
-    alias_method :all, :actions
 
     class << self
       def key_from_name(name)
@@ -36,6 +36,7 @@ module GitHooks
       @name      = name.to_s.titleize
       @success   = true
       @actions   = []
+      @limiters  = hook.limiters
       @hook      = hook
       @benchmark = 0
 
@@ -85,12 +86,6 @@ module GitHooks
       success? ? text.success! : text.failure!
     end
 
-    def action(title, &block)
-      fail ArgumentError, 'expected block, received none' unless block_given?
-      @actions << Action.new(title, self, &block)
-      self
-    end
-
     def run
       running!
       begin
@@ -100,6 +95,37 @@ module GitHooks
         @benchmark = Time.now - time_start
         finished!
       end
+    end
+
+    ## DSL
+
+    def config_path
+      GitHooks.hooks_root.join('configs')
+    end
+
+    def config_file(*path_components)
+      config_path.join(*path_components)
+    end
+
+    def lib_path
+      GitHooks.hooks_root.join('lib')
+    end
+
+    def lib_file(*path_components)
+      lib_path.join(*path_components)
+    end
+
+    def limit(type)
+      unless @limiters.include? type
+        @limiters[type] ||= Repository::Limiter.new(type)
+      end
+      @limiters[type]
+    end
+
+    def action(title, &block)
+      fail ArgumentError, 'expected block, received none' unless block_given?
+      @actions << Action.new(title, self, &block)
+      self
     end
   end
 end

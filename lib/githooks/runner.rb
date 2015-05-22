@@ -27,75 +27,68 @@ require_relative 'repository'
 require_relative 'system_utils'
 
 module GitHooks
-  module Runner
-    # rubocop:disable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
-    def run(options = {})
-      options = Thor::CoreExt::HashWithIndifferentAccess.new(options)
+  class Runner # rubocop:disable Metrics/ClassLength
+    attr_reader :repository, :script, :hook_path, :repo_path, :options
+    private :repository, :script, :hook_path, :repo_path, :options
 
-      options['staged'] = options['staged'].nil? ? true : options['staged']
-
-      repo    = options['repo']   ||= Repository.root_path
-      script  = options['script'] ||= Repository.instance(repo).config.script
-      libpath = options['path']   ||= Repository.instance(repo).config.path
-      args    = options['args']   ||= []
+    def initialize(options = {}) # rubocop:disable Metrics/AbcSize
+      @repo_path  = Pathname.new(options.delete('repo') || Repository.path)
+      @repository = Repository.instance(@repo_path)
+      @hook_path  = acquire_hooks_path(options.delete('path') || @repository.config.path || @repository.path)
+      @script     = options.delete('script') || @repository.config.script
+      @options    = IndifferentAccessOpenStruct.new(options)
 
       GitHooks.verbose = !!ENV['GITHOOKS_VERBOSE']
       GitHooks.debug   = !!ENV['GITHOOKS_DEBUG']
+    end
 
-      if options['skip-pre']
+    # rubocop:disable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
+    def run
+      options.staged = options.staged.nil? ? true : options.staged
+
+      if options.skip_pre
         puts 'Skipping PreRun Executables'
       else
-        run_externals('pre-run-execute', repo, args)
+        run_externals('pre-run-execute')
       end
 
-      if script && !(options['ignore-script'] || GitHooks.ignore_script)
+      if script && !(options.ignore_script || GitHooks.ignore_script)
         command = "#{script} #{Pathname.new($0)} #{Shellwords.join(ARGV)};"
         puts "Kernel#exec(#{command.inspect})" if GitHooks.verbose
         exec(command)
-      elsif libpath
-        load_tests(libpath, options['skip-bundler'])
-        start(options)
+      elsif hook_path
+        load_tests(hook_path, options.skip_bundler)
+        start
       else
-        puts %q"I can't figure out what to run - specify either path or script to give me a hint..."
+        puts %q"I can't figure out what to run! Specify either path or script to give me a hint..."
       end
 
-      if options['skip-post']
+      if options.skip_post
         puts 'Skipping PostRun Executables'
       else
-        run_externals('post-run-execute', repo, args)
+        run_externals('post-run-execute')
       end
     rescue GitHooks::Error::NotAGitRepo => e
       puts "Unable to find a valid git repo in #{repo}."
       puts 'Please specify path to repo via --repo <path>' if GitHooks::SCRIPT_NAME == 'githooks'
       raise e
     end
-    module_function :run
 
-    def attach(options = {})
-      repo_path  = options[:repo] || Repository.root_path
-      repo_path  = Pathname.new(repo_path) unless repo_path.nil?
-      repo_hooks = repo_path.join('.git', 'hooks')
-      entry_path = options[:script] || options[:path]
-
-      hook_phases = options[:hooks]
-      hook_phases ||= Hook::VALID_PHASES
-
-      bootstrapper = options[:bootstrap]
-      bootstrapper = Pathname.new(bootstrapper).realpath unless bootstrapper.nil?
-      entry_path   = Pathname.new(entry_path).realdirpath
-
-      repo = Repository.instance(repo_path)
+    def attach
+      entry_path   = Pathname.new(options.script || options.path).realdirpath
+      hook_phases  = options.hooks || Hook::VALID_PHASES
+      bootstrapper = Pathname.new(options.bootstrap).realpath if options.bootstrap
 
       if entry_path.directory?
-        if path = repo.config['path'] # rubocop:disable AssignmentInCondition
+        if path = repository.config['path'] # rubocop:disable AssignmentInCondition
           fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to path #{path} - Detach to continue."
         end
-        repo.config.set('path', entry_path)
+        repository.config.set('path', entry_path)
       elsif entry_path.executable?
-        if path = repo.config['script'] # rubocop:disable AssignmentInCondition
+        if path = repository.config['script'] # rubocop:disable AssignmentInCondition
           fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to script #{path}. Detach to continue."
         end
-        repo.config.set('script', entry_path)
+        repository.config.set('script', entry_path)
       else
         fail ArgumentError, "Provided path '#{entry_path}' is neither a directory nor an executable file."
       end
@@ -105,49 +98,35 @@ module GitHooks
       gitrunner ||= (GitHooks::BIN_PATH + 'githooks-runner').realpath
 
       hook_phases.each do |hook|
-        hook = (repo_hooks + hook).to_s
+        hook = (@repository.hooks + hook).to_s
         puts "Linking #{gitrunner} -> #{hook}" if GitHooks.verbose
         FileUtils.ln_sf gitrunner.to_s, hook
       end
     end
-    module_function :attach
 
-    def detach(repo_path, hook_phases)
-      repo_path   ||= Repository.root_path
-      repo_hooks    = Pathname.new(repo_path).join('.git', 'hooks')
-      hook_phases ||= Hook::VALID_PHASES
-
-      repo = Repository.instance(repo_path)
-
-      hook_phases.each do |hook|
-        next unless (repo_hook = (repo_hooks + hook)).symlink?
-        puts "Removing hook '#{hook}' from repository at: #{repo_path}" if GitHooks.verbose
+    def detach(hook_phases = nil)
+      (hook_phases || Hook::VALID_PHASES).each do |hook|
+        next unless (repo_hook = (@repository.hooks + hook)).symlink?
+        puts "Removing hook '#{hook}' from repository at: #{repository.path}" if GitHooks.verbose
         FileUtils.rm_f repo_hook
       end
 
-      active_hooks = Hook::VALID_PHASES.select { |hook| (repo_hooks + hook).exist? }
+      active_hooks = Hook::VALID_PHASES.select { |hook| (@repository.hooks + hook).exist? }
 
       if active_hooks.empty?
         puts 'All hooks detached. Removing configuration section.'
-        repo.config.remove_section(repo_path: repo_path)
+        repo.config.remove_section(repo_path: repository.path)
       else
         puts "Keeping configuration for active hooks: #{active_hooks.join(', ')}"
       end
     end
-    module_function :detach
 
-    def list(repo_path)
-      repo_path  ||= Pathname.new(Repository.root_path)
-
-      repo = Repository.instance(repo_path)
-      script  = repo.config.script
-      libpath = repo.config.path
-
-      unless script || libpath
+    def list
+      unless script || hook_path
         fail Error::NotAttached, 'Repository currently not configured. Usage attach to setup for use with githooks.'
       end
 
-      if (executables = repo.config.pre_run_execute).size > 0
+      if (executables = repository.config.pre_run_execute).size > 0
         puts 'PreRun Executables (in execution order):'
         puts executables.collect { |exe| "  #{exe}" }.join("\n")
         puts
@@ -159,13 +138,13 @@ module GitHooks
         puts
       end
 
-      if libpath
+      if hook_path
         puts 'Main Testing Library with Tests (in execution order):'
         puts '  Tests loaded from:'
-        puts "    #{libpath}"
+        puts "    #{hook_path}"
         puts
 
-        SystemUtils.quiet { load_tests(libpath, true) }
+        SystemUtils.quiet { load_tests(hook_path, true) }
 
         %w{ pre-commit commit-msg }.each do |phase|
           next unless Hook.phases[phase]
@@ -173,7 +152,7 @@ module GitHooks
           puts "  Phase #{phase.camelize}:"
           Hook.phases[phase].sections.each_with_index do |section, section_index|
             printf "    %3d: %s\n", section_index + 1, section.title
-            section.all.each_with_index do |action, action_index|
+            section.actions.each_with_index do |action, action_index|
               printf "      %3d: %s\n", action_index + 1, action.title
               action.limiters.each_with_index do |limiter, limiter_index|
                 type, value = limiter.type.inspect, limiter.only
@@ -187,7 +166,7 @@ module GitHooks
         puts
       end
 
-      if (executables = repo.config.post_run_execute).size > 0
+      if (executables = repository.config.post_run_execute).size > 0
         puts 'PostRun Executables (in execution order):'
         executables.each do |exe|
           puts "  #{exe}"
@@ -195,16 +174,26 @@ module GitHooks
         puts
       end
     rescue Error::NotAGitRepo
-      puts "Unable to find a valid git repo in #{repo}."
+      puts "Unable to find a valid git repo in #{repository}."
       puts 'Please specify path to repo via --repo <path>' if GitHooks::SCRIPT_NAME == 'githooks'
       raise
     end
-    module_function :list
 
   private
 
-    def run_externals(which, repo_path, args)
-      Repository.instance(repo_path).config[which].all? do |executable|
+    def acquire_hooks_path(path)
+      path = Pathname.new(path) unless path.is_a? Pathname
+      path.tap do # return input path by default
+        return path if path.include? 'hooks'
+        return path if path.include? '.hooks'
+        return p if (p = path.join('hooks')).exist? # rubocop:disable Lint/UselessAssignment
+        return p if (p = path.join('.hooks')).exist? # rubocop:disable Lint/UselessAssignment
+      end
+    end
+
+    def run_externals(which)
+      args = options.args || []
+      repository.config[which].all? { |executable|
         command = SystemUtils::Command.new(File.basename(executable), bin_path: executable)
 
         puts "#{which.camelize}: #{command.build_command(args)}" if GitHooks.verbose
@@ -217,20 +206,19 @@ module GitHooks
           end
         end
         r.status.success?
-      end || fail(TestsFailed, "Failed #{which.camelize} executables - giving up")
+      } || fail(TestsFailed, "Failed #{which.camelize} executables - giving up")
     end
-    module_function :run_externals
 
-    def start(options = {}) # rubocop:disable  CyclomaticComplexity,  MethodLength
-      phase = options[:hook] || GitHooks.hook_name || 'pre-commit'
+    def start # rubocop:disable  CyclomaticComplexity,  MethodLength
+      phase = options.hook || GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
       if (active_hook = Hook.phases[phase])
-        active_hook.args            = options.delete(:args)
-        active_hook.staged          = options.delete(:staged)
-        active_hook.untracked       = options.delete(:untracked)
-        active_hook.tracked         = options.delete(:tracked)
-        active_hook.repository_path = options.delete(:repo)
+        active_hook.args            = options.args
+        active_hook.staged          = options.staged
+        active_hook.untracked       = options.untracked
+        active_hook.tracked         = options.tracked
+        active_hook.repository_path = repository.path
       else
         fail Error::InvalidPhase, "Hook '#{phase}' is not defined - have you registered any tests for this hook yet?"
       end
@@ -268,26 +256,35 @@ module GitHooks
 
       exit(success ? 0 : 1)
     end
-    module_function :start
 
-    def load_tests(path, skip_bundler = false)
-      hooks_root = Pathname.new(path).realpath
-      hooks_path = (p = (hooks_root.join('hooks'))).exist? ? p : (hooks_root.join('.hooks'))
-      hooks_libs = hooks_root.join('libs')
-      gemfile    = hooks_root.join('Gemfile')
+    def load_tests(hooks_path, skip_bundler = false)
+      # hooks stored locally in the repo_root should have their libs, init and
+      # gemfile stored in the hooks directory itself, whereas hooks stored
+      # in a separate repository should have have them all stored relative
+      # to the separate hooks directory.
+      if hook_path.to_s.start_with? repository.path
+        hook_data_path = acquire_hooks_path(repository.path)
+      else
+        hook_data_path = acquire_hooks_path(hook_path)
+      end
 
-      if gemfile.exist? && !skip_bundler
+      hooks_libs = hook_data_path.join('lib')
+      hooks_init = hook_data_path.join('hooks_init.rb')
+      gemfile    = hook_data_path.join('Gemfile')
+
+      GitHooks.hooks_root = hook_data_path
+
+      if gemfile.exist? && !(skip_bundler.nil? ? ENV.include?('GITHOOKS_SKIP_BUNDLER') : skip_bundler)
         puts "loading Gemfile from: #{gemfile}" if GitHooks.verbose
 
         begin
-          ENV['BUNDLE_GEMFILE'] = (hooks_root + 'Gemfile').to_s
+          ENV['BUNDLE_GEMFILE'] = gemfile.to_s
 
           # stupid RVM polluting my environment without asking via it's
           # executable-hooks gem preloading bundler. hence the following ...
           if defined? Bundler
             [:@bundle_path, :@configured, :@definition, :@load].each do |var|
-              Bundler.instance_variable_set(var, nil)
-            end
+              ::Bundler.instance_variable_set(var, nil)
             # bundler tests for @settings using defined? - which means we need
             # to forcibly remove it.
             Bundler.send(:remove_instance_variable, :@settings)
@@ -307,13 +304,18 @@ module GitHooks
 
       $LOAD_PATH.unshift hooks_libs.to_s
 
-      Dir["#{hooks_path}/**/*.rb"].each do |lib|
-        lib.gsub!('.rb', '')
-        puts "Loading: #{lib}" if GitHooks.verbose
-        require lib
+      if hooks_init.exist?
+        puts "Loading hooks from #{hooks_init} ..." if GitHooks.verbose?
+        require hooks_init.sub_ext('').to_s
+      else
+        puts 'Loading hooks brute-force style ...' if GitHooks.verbose?
+        Dir["#{hooks_path}/**/*.rb"].each do |lib|
+          lib.gsub!('.rb', '')
+          puts "  -> #{lib}" if GitHooks.verbose
+          require lib
+        end
       end
     end
-    module_function :load_tests
 
     # rubocop:enable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
   end

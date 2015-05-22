@@ -133,7 +133,7 @@ module GitHooks
     private
 
       def repo_path
-        @repository.root_path
+        @repository.path
       end
 
       def git(*args)
