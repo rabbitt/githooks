@@ -16,11 +16,29 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-class Object
-  def deep_dup
-    Marshal.load(Marshal.dump(self))
-  rescue TypeError => e
-    raise e unless e.message.include? "can't dump"
-    dup
+require 'ostruct'
+require 'thor/core_ext/hash_with_indifferent_access'
+
+class IndifferentAccessOpenStruct < OpenStruct
+  def new_ostruct_member(name)
+    return super unless name.to_s.include? '-'
+
+    original_name, sanitized_name = name, name.to_s.gsub('-', '_').to_sym
+    return if respond_to?(sanitized_name)
+
+    define_singleton_method(sanitized_name) { @table[original_name] }
+    define_singleton_method("#{sanitized_name}=") { |x| @table[original_name] = x }
+  end
+
+  def [](k)
+    public_send(k)
+  end
+
+  def []=(k, v)
+    public_send("#{k}=", v)
+  end
+
+  def to_h
+    Thor::CoreExt::HashWithIndifferentAccess.new(@table)
   end
 end
