@@ -285,6 +285,7 @@ module GitHooks
           if defined? Bundler
             [:@bundle_path, :@configured, :@definition, :@load].each do |var|
               ::Bundler.instance_variable_set(var, nil)
+            end
             # bundler tests for @settings using defined? - which means we need
             # to forcibly remove it.
             Bundler.send(:remove_instance_variable, :@settings)
