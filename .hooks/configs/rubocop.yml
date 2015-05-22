@@ -36,7 +36,7 @@ DotPosition:
 
 MethodLength:
   CountComments: false
-  Max: 15
+  Max: 20
 
 ParameterLists:
   Max: 5
@@ -57,6 +57,9 @@ CaseIndentation:
   IndentWhenRelativeTo: end
   IndentOneStep: true
 
+ClassLength:
+  Max: 150
+
 LineLength:
   Enabled: false
 
@@ -71,6 +74,9 @@ EmptyLinesAroundAccessModifier:
 EndAlignment:
   AlignWith: variable
 
+Style/DoubleNegation:
+  Enabled: false
+
 SpaceInsideBrackets:
   Enabled: false
 
@@ -84,9 +90,6 @@ BarePercentLiterals:
   Enabled: false
 
 Style/TrailingComma:
-  Enabled: false
-
-Style/DoubleNegation:
   Enabled: false
 
 Style/FileName:

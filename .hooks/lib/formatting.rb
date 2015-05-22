@@ -1,41 +1,37 @@
 require 'githooks'
 
-RUBY_FILE_REGEXP = %r[
+RUBY_FILE_REGEXP = Regexp.new(%w[
   ^(
     Rakefile |
     .+\.gemspec |
     lib/.+\.(task|rb) |
     bin/.+
   )$
-]ix.freeze
+].join)
 
 GitHooks::Hook.register 'pre-commit' do
   commands :ruby, :rubocop
+  limit(:type).to :modified, :added, :untracked, :tracked
+  limit(:path).to RUBY_FILE_REGEXP
 
   section 'Standards' do
     action 'Validate Ruby Syntax' do
-      limit(:type).to :modified, :added, :untracked, :tracked
-      limit(:path).to RUBY_FILE_REGEXP
-
       on_each_file do |file|
         ruby '-c', file.path, prefix_output: file.path
       end
     end
 
     action 'Validate Ruby Standards' do
-      limit(:type).to :modified, :added, :untracked, :tracked
-      limit(:path).to RUBY_FILE_REGEXP
-
-      rubocop_config = Pathname.new(__FILE__).dirname.join('configs', '.rubocop.yml').to_s
       on_all_files do |files|
-        rubocop '-c', rubocop_config, '-D', '--format', 'clang', files.collect(&:path), strip_empty_lines: true
+        args = %W{
+          -c #{config_file('rubocop.yml')} -D --format clang
+        }.concat(files.collect(&:path))
+
+        rubocop(*args, strip_empty_lines: true)
       end
     end
 
     action 'No Leading Tabs in Ruby files' do
-      limit(:type).to :modified, :added, :untracked, :tracked
-      limit(:path).to RUBY_FILE_REGEXP
-
       on_each_file do |file|
         file.grep(/^[ ]*(\t+)/).tap do |matches|
           matches.each do |line_number, line_text|
