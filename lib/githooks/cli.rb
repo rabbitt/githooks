@@ -25,7 +25,7 @@ module GitHooks
       desc :attach, 'attach githooks to repository hooks'
       method_option :bootstrap, type: :string, desc: 'Path to bootstrap script', default: nil
       method_option :script, aliases: '-s', type: :string, desc: 'Path to script to run', default: nil
-      method_option :path, aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
+      method_option :'hooks-path', aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
       method_option :repo, aliases: '-r', type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
       method_option :hooks, { # rubocop:disable BracesAroundHashParameters
         type: :array,
@@ -37,7 +37,7 @@ module GitHooks
         GitHooks.verbose = !!options['verbose']
         GitHooks.debug = !!options['debug']
 
-        unless options['script'] || options['path']
+        unless options['script'] || options['hooks-path']
           fail ArgumentError, %q"Neither 'path' nor 'script' were specified - please provide at least one."
         end
 
@@ -79,11 +79,12 @@ module GitHooks
       method_option :tracked, aliases: '-A', type: :boolean, desc: 'test all tracked files', default: false
       method_option :untracked, aliases: '-T', type: :boolean, desc: 'test untracked files', default: false
       method_option :script, aliases: '-s', type: :string, desc: 'Path to script to run', default: nil
-      method_option :path, aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
+      method_option :'hooks-path', aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
       method_option :repo, aliases: '-r', type: :string, desc: 'Path to repo to run tests on', default: Dir.getwd
       method_option :'skip-pre', type: :boolean, desc: 'Skip PreRun Scripts', default: false
       method_option :'skip-post', type: :boolean, desc: 'Skip PostRun Scripts', default: false
       method_option :'skip-bundler', type: :boolean, desc: %q"Don't load bundler gemfile", default: false
+      method_option :'hook', type: :string, enum: Hook::VALID_PHASES, desc: 'Hook to run', default: 'pre-commit'
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
       def execute
         GitHooks.verbose = options['verbose']

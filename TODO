@@ -1,0 +1,19 @@
+* General
+  - allow attaching scripts (not hooks-path) to specific hook phases
+  - add `githooks fix-links` command to reset hook symlinks to those defined in config
+
+* Config
+  - only store githooks configuration in local repository config
+    (means no need to store the repo path - it's implicit in the repo)
+
+  - store sub-config for each hook phase, for example:
+    [githooks pre-commit]
+      hooks-path = ...
+      script = ...
+      etc...
+    [githooks pre-push]
+      hooks-path = ...
+      ...
+
+* DSL
+  - encapsulate it into it's own class to isolate what's exposed

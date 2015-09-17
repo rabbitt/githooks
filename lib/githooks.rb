@@ -73,9 +73,10 @@ module GitHooks
     end
   end
 
-  SUCCESS_SYMBOL = '✓'.success! unless defined? SUCCESS_SYMBOL
-  FAILURE_SYMBOL = 'X'.failure! unless defined? FAILURE_SYMBOL
-  UNKNOWN_SYMBOL = '?'.unknown! unless defined? UNKNOWN_SYMBOL
+  SUCCESS_SYMBOL = '✓'.color_success! unless defined? SUCCESS_SYMBOL
+  FAILURE_SYMBOL = 'X'.color_failure! unless defined? FAILURE_SYMBOL
+  UNKNOWN_SYMBOL = '?'.color_unknown! unless defined? UNKNOWN_SYMBOL
+  WARNING_SYMBOL = '!'.color_warning! unless defined? WARNING_SYMBOL
 
   LIB_PATH = Pathname.new(__FILE__).dirname.realpath unless defined? LIB_PATH
   GEM_PATH = LIB_PATH.parent                         unless defined? GEM_PATH

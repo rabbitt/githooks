@@ -22,7 +22,7 @@ require_relative 'system_utils'
 
 module GitHooks
   class Hook
-    VALID_PHASES = %w{ pre-commit commit-msg }.freeze unless defined? VALID_PHASES
+    VALID_PHASES = %w{ pre-commit commit-msg pre-push }.freeze unless defined? VALID_PHASES
 
     @__phases__ = {}
     @__mutex__  = Mutex.new

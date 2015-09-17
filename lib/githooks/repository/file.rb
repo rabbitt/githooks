@@ -27,15 +27,16 @@ module GitHooks
     end
 
     class File < DiffIndexEntryDelegateClass
-      def initialize(entry)
-        unless entry.is_a? Repository::DiffIndexEntry
-          fail ArgumentError, "Expected a Repository::DiffIndexEntry but got a '#{entry.class.name}'"
-        end
-        @file = entry
-      end
+      attr_reader :repo, :file
 
-      def __getobj__ # rubocop:disable TrivialAccessors
-        @file
+      private :repo
+      protected :file
+
+      alias_method :__getobj__, :file
+
+      def initialize(repo, entry)
+        @repo = repo
+        @file = entry
       end
 
       def inspect
@@ -47,6 +48,10 @@ module GitHooks
 
       def path
         to.path || from.path
+      end
+
+      def full_path
+        repo.path.join(path)
       end
 
       def name
@@ -85,7 +90,7 @@ module GitHooks
       def fd
         case type
           when :deleted, :deletion then nil
-          else path.open
+          else full_path.open
         end
       end
 
@@ -120,6 +125,14 @@ module GitHooks
       def lines(strip_newlines = false)
         return [] unless fd
         strip_newlines ? fd.readlines.collect(&:chomp!) : fd.readlines
+      end
+
+      def eql?(other)
+        path.to_s == other.path.to_s
+      end
+
+      def hash
+        path.to_s.hash
       end
 
       def <=>(other)

@@ -21,15 +21,11 @@ module GitHooks
   class Repository
     class Config # rubocop:disable ClassLength
       OPTIONS = {
-        'path'             => { type: :path, multiple: false },
+        'hooks-path'       => { type: :path, multiple: false },
         'script'           => { type: :path, multiple: false },
         'pre-run-execute'  => { type: :path, multiple: true },
         'post-run-execute' => { type: :path, multiple: true },
-      }
-
-      def initialize(path = Dir.getwd)
-        @repository = Repository.instance(path)
-      end
+      }.freeze unless defined? OPTIONS
 
       OPTIONS.keys.each do |name|
         method_name = name.gsub(/-/, '_')
@@ -41,33 +37,29 @@ module GitHooks
         EOS
       end
 
+      def initialize(repository)
+        @repository = repository
+      end
+
       def [](option)
-        send(option.gsub('-', '_'))
+        send(option.to_s.gsub('-', '_'))
       end
 
       def set(option, value, options = {}) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
-        unless OPTIONS.keys.include? option
-          fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
-        end
-
-        repo      = options.delete(:repo_path) || repo_path
-        global    = (opt = options.delete(:global)).nil? ? false : opt
+        option    = normalize_option(option)
+        repo      = options.delete(:repo_path) || @repository.path
         var_type  = "--#{OPTIONS[option][:type]}"
         add_type  = OPTIONS[option][:multiple] ? '--add' : '--replace-all'
         overwrite = !!options.delete(:overwrite)
 
-        if option == 'path'
-          new_path = Pathname.new(value)
-          errors = []
-          errors << 'path must be a real location' unless new_path.exist?
-          errors << 'path must be a directory' unless new_path.directory?
-          unless (new_path + 'hooks').exist? || (new_path + '.hooks').exist?
-            errors << 'path must have a hooks or .hooks directory in it'
-          end
+        global    = (opt = options.delete(:global)).nil? ? false : opt
+        global    = global ? '--global' : '--local'
 
-          if errors.size > 0
-            puts "Unable to change githooks path for [#{repo}]:"
-            errors.each { |error| puts "  #{error}" }
+        if OPTIONS[option][:type] == :path
+          new_path = Pathname.new(value)
+          unless new_path.exist?
+            puts "Unable to set option option #{option} for [#{repo}]:"
+            puts "  Path does not exist: #{new_path}"
             fail ArgumentError
           end
         else
@@ -78,81 +70,84 @@ module GitHooks
 
         if overwrite && !self[option].nil? && !self[option].empty?
           puts "Overwrite requested for option '#{option}'" if GitHooks.verbose
-          unset(option, repo_chdir: repo, global: global)
+          unset(option, chdir: repo, global: global)
         end
 
         option = "githooks.#{repo}.#{option}"
-        git(global ? '--global' : '--local', var_type, add_type, option, value, chdir: repo).tap do |result|
+        git(global, var_type, add_type, option, value, chdir: repo).tap do |result|
           puts "Added option #{option} with value #{value}" if result.status.success?
         end
       end
 
       def remove_section(options = {})
-        repo   = options.delete(:repo_path) || repo_path
+        repo   = options.delete(:repo_path) || @repository.path
         global = (opt = options.delete(:global)).nil? ? false : opt
-        option = "githooks.#{repo}"
-        git(global ? '--global' : '--local', '--remove-section', option, chdir: repo)
+        global = global ? '--global' : '--local'
+        git(global, '--remove-section', "githooks.#{repo}", chdir: repo)
       end
 
-      def unset(option, *args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
-        unless OPTIONS.keys.include? option
-          fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
-        end
-
-        options = args.extract_options
-        repo    = options.delete(:repo_path) || repo_path
+      def unset(option, *args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity
+        options = args.extract_options!
         global  = (opt = options.delete(:global)).nil? ? false : opt
-        option  = "githooks.#{repo}.#{option}"
+        global  = global ? '--global' : '--local'
+        option  = "githooks.#{repo}.#{normalize_option(option)}"
 
         value_regex = args.first
 
         if options.delete(:all) || value_regex.nil?
-          git(global ? '--global' : '--local', '--unset-all', option, chdir: repo)
+          git(global, '--unset-all', option, options)
         else
-          git(global ? '--global' : '--local', '--unset', option, value_regex, chdir: repo)
-        end.tap do |result|
-          puts "Unset option #{option.git_option_path_split.last}" if result.status.success?
+          git(global, '--unset', option, value_regex, options)
         end
+
+        result.status.success?
       end
 
       def get(option, options = {})
-        unless OPTIONS.keys.include? option
-          fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
+        option = normalize_option(option)
+
+        begin
+          repo = options[:repo_path] || @repository.path
+          return unless (value = list(options)['githooks'][repo.to_s][option])
+          OPTIONS[option][:type] == :path ? Pathname.new(value) : value
+        rescue NoMethodError
+          nil
         end
-
-        repo     = options[:repo_path] || repo_path
-        githooks = list(options)['githooks']
-
-        githooks[repo][option] if githooks && githooks[repo] && githooks[repo][option]
       end
 
       def list(options = {})
-        config(options.delete(:repo_path) || repo_path)
+        config(chdir: options.delete(:repo_path) || options.delete(:chdir))
+      end
+
+      def inspect
+        opts = OPTIONS.keys.collect { |k| ":'#{k}'=>#{get(k).inspect}" }.join(' ')
+        format '<%s:0x%0x014 %s>', self.class.name, (__id__ * 2), opts
       end
 
     private
 
-      def repo_path
-        @repository.path
+      def normalize_option(option)
+        unless OPTIONS.keys.include? option
+          fail ArgumentError, "Unexpected option '#{option}': expected one of: #{OPTIONS.keys.join(', ')}"
+        end
+
+        option.to_s
       end
 
       def git(*args)
-        args = ['config', *args].flatten
-        @repository.git(*args)
+        options = args.extract_options!
+        args.push(options.merge(chdir: options[:repo_path] || options[:chdir] || @repository.path))
+        @repository.git(:config, *args)
       end
 
-      def config(path = nil) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
-        path ||= repo_path
-
-        raw_config = git('--list', chdir: path).output.split("\n")
-        raw_config.sort.uniq.each_with_object({}) do |line, hash|
+      def config(*args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
+        raw_config = git('--list', *args).output.split("\n").sort.uniq
+        raw_config.each_with_object({}) do |line, hash|
           key, value = line.split(/\s*=\s*/)
           key_parts = key.git_option_path_split
 
           ptr = hash[key_parts.shift] ||= {} # rubocop:disable IndentationWidth
-          while key_parts.size > 1 && (part = key_parts.shift)
-            ptr = ptr[part] ||= {} # rubocop:disable IndentationWidth
-          end
+          ptr = ptr[key_parts.shift]  ||= {} until key_parts.size == 1
 
           key = key_parts.shift
           case ptr[key]

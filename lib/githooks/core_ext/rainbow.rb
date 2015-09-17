@@ -22,18 +22,18 @@ module Rainbow
   module Ext
     module String
       module InstanceMethods
-        def success!
+        def color_success!
           color(:green).bright
         end
 
-        def failure!
+        def color_failure!
           color(:red).bright
         end
 
-        def unknown!
+        def color_unknown!
           color(:yellow).bright
         end
-        alias_method :warning!, :unknown!
+        alias_method :color_warning!, :color_unknown!
       end
     end
   end

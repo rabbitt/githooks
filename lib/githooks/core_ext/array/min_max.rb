@@ -26,6 +26,7 @@ class Array
       min
     end
   end
+  alias_method :min, :minimum
 
   def maximum(&_block)
     collection = block_given? ? collect { |obj| yield obj } : self
@@ -34,4 +35,5 @@ class Array
       max
     end
   end
+  alias_method :max, :maximum
 end

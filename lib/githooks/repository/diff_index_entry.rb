@@ -16,14 +16,16 @@ module GitHooks
         (?<rename_path>\S+)?
       }xi unless defined? DIFF_STRUCTURE_REGEXP
 
-      def self.from_file_path(path, tracked = false)
-        path = Pathname.new(path)
+      def self.from_file_path(repo, path, tracked = false)
+        relative_path = Pathname.new(path)
+        full_path = repo.path + relative_path
         entry_line = format(":%06o %06o %040x %040x %s\t%s",
-                            0, path.stat.mode, 0, 0, (tracked ? '^' : '?'), path.to_s)
-        new(entry_line)
+                            0, full_path.stat.mode, 0, 0, (tracked ? '^' : '?'), relative_path.to_s)
+        new(repo, entry_line)
       end
 
-      def initialize(entry)
+      def initialize(repo, entry)
+        @repo = repo
         unless entry =~ DIFF_STRUCTURE_REGEXP
           fail ArgumentError, "Unable to parse incoming diff entry data: #{entry}"
         end
@@ -56,7 +58,7 @@ module GitHooks
       # rubocop:enable MultilineOperationIndentation
 
       def to_repo_file
-        Repository::File.new(self)
+        Repository::File.new(@repo, self)
       end
 
       class FileState

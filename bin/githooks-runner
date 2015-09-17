@@ -19,4 +19,5 @@ rescue GitHooks::Error => e
   puts e.message
   exit 1
 end
+
 exit result.to_i

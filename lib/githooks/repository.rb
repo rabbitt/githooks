@@ -17,6 +17,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
+require 'set'
+require 'singleton'
+
 module GitHooks
   class Repository # rubocop:disable ClassLength
     extend SystemUtils
@@ -40,36 +43,20 @@ module GitHooks
     CHANGE_TYPES = CHANGE_TYPE_SYMBOLS.invert.freeze unless defined? CHANGE_TYPES
     DEFAULT_DIFF_INDEX_OPTIONS = { staged: true } unless defined? DEFAULT_DIFF_INDEX_OPTIONS
 
-    @__instance__ = {}
-    @__mutex__    = Mutex.new
+    attr_reader :path, :hooks, :config
 
-    def self.instance(path = Dir.getwd)
-      path = Pathname.new(path).realpath
-      strpath = path.to_s
-      return @__instance__[strpath] if @__instance__[strpath]
-
-      @__mutex__.synchronize do
-        return @__instance__[strpath] if @__instance__[strpath]
-        @__instance__[strpath] = new(path)
-      end
+    def initialize(path = nil)
+      @path   = Pathname.new(get_root_path(path || Dir.getwd))
+      @hooks  = Pathname.new(@path).join('.git', 'hooks')
+      @config = Repository::Config.new(self)
     end
 
-    def self.method_missing(method, *args, &block)
-      return super unless instance.public_methods.include? method
-      instance.public_send(method, *args, &block)
+    def hooks_script
+      config['script']
     end
 
-    attr_reader :path, :hooks
-    alias_method :path, :path
-
-    def initialize(path = Dir.getwd)
-      @path  = get_root_path(path)
-      @hooks = Pathname.new(@path).join('.git', 'hooks')
-    end
-    protected :initialize
-
-    def config
-      @config ||= Repository::Config.new(path)
+    def hooks_path
+      config['hooks-path']
     end
 
     def get_root_path(path)
@@ -81,7 +68,7 @@ module GitHooks
     end
 
     def stash
-      git(*%w( stash -q --keep-index -a)).status.success?
+      git(*%w(stash -q --keep-index -a)).status.success?
     end
 
     def unstash
@@ -96,18 +83,17 @@ module GitHooks
 
       if options.delete(:tracked)
         tracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
-          list << file unless list.include?(file)
+          list << file
         end
       end
 
       if options.delete(:untracked)
         untracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
-          list << file unless list.include?(file)
+          list << file
         end
       end
 
-      manifest_list.sort!
-      manifest_list.uniq { |f| f.path.to_s }
+      manifest_list.sort
     end
 
     def staged_manifest(options = {})
@@ -121,12 +107,18 @@ module GitHooks
 
     def tracked_manifest(*)
       files = git('ls-files', '--exclude-standard').output.strip.split(/\s*\n\s*/)
-      files.collect { |path| DiffIndexEntry.from_file_path(path, true).to_repo_file }
+      files.collect { |path|
+        next unless self.path.join(path).file?
+        DiffIndexEntry.from_file_path(self, path, true).to_repo_file
+      }.compact
     end
 
     def untracked_manifest(*)
       files = git('ls-files', '--others', '--exclude-standard').output.strip.split(/\s*\n\s*/)
-      files.collect { |path| DiffIndexEntry.from_file_path(path).to_repo_file }
+      files.collect { |path|
+        next unless self.path.join(path).file?
+        DiffIndexEntry.from_file_path(self, path).to_repo_file
+      }.compact
     end
 
   private
@@ -142,9 +134,11 @@ module GitHooks
         cmd << (options.delete(:ref) || 'HEAD')
       end
 
-      git(*cmd.flatten.compact).output_lines.collect do |diff_data|
-        DiffIndexEntry.new(diff_data).to_repo_file
-      end
+      Set.new(
+        git(*cmd.flatten.compact).output_lines.collect { |diff_data|
+          DiffIndexEntry.new(self, diff_data).to_repo_file
+        }.compact
+      )
     rescue StandardError => e
       puts 'Error Encountered while acquiring manifest'
       puts "Command: git #{cmd.flatten.compact.join(' ')}"

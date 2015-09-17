@@ -34,7 +34,7 @@ module GitHooks
       @title     = title
       @section   = section
       @on        = nil
-      @limiters  = section.limiters
+      @limiters  = {}
       @success   = true
       @errors    = []
       @warnings  = []
@@ -46,11 +46,12 @@ module GitHooks
     end
 
     def manifest
-      @manifest ||= section.hook.manifest.filter(@limiters)
+      @manifest ||= section.hook.manifest.filter(section.limiters.merge(@limiters))
     end
 
     def colored_title
-      status_colorize title
+      return title.color_unknown! unless finished?
+      success? ? title.color_success! : title.color_failure!
     end
 
     def status_symbol
@@ -61,11 +62,6 @@ module GitHooks
     %w(finished running waiting).each do |method|
       define_method(:"#{method}?") { @status == method.to_sym }
       define_method(:"#{method}!") { @status = method.to_sym }
-    end
-
-    def status_colorize(text)
-      return text.unknown! unless finished?
-      success? ? text.success! : text.failure!
     end
 
     def run # rubocop:disable MethodLength, AbcSize
@@ -151,20 +147,20 @@ module GitHooks
       @limiters[type]
     end
 
-    def on_each_file(&block)
-      @on = -> { manifest.collect { |file| block.call(file) }.all? }
+    def on_each_file
+      @on = -> { manifest.collect { |file| yield file }.all? }
     end
 
-    def on_all_files(&block)
-      @on = -> { block.call manifest }
+    def on_all_files
+      @on = -> { yield manifest }
     end
 
-    def on_argv(&block)
-      @on = -> { block.call section.hook.args }
+    def on_argv
+      @on = -> { yield section.hook.args }
     end
 
-    def on(*args, &block)
-      @on = -> { block.call(*args) }
+    def on(*args)
+      @on = -> { yield(*args) }
     end
 
   private
@@ -176,8 +172,8 @@ module GitHooks
       }
 
       result = command.execute(*args, &block)
-      result.output_lines(prefix).each { |line| puts line }
-      result.error_lines(prefix).each { |line| puts line }
+      result.output_lines(prefix).each { |line| $stdout.puts line }
+      result.error_lines(prefix).each { |line| $stderr.puts line }
       result.status.success?
     end
   end

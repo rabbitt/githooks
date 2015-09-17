@@ -21,14 +21,14 @@ require 'delegate'
 
 module GitHooks
   class Section < DelegateClass(Array)
-    attr_reader :name, :hook, :success, :actions, :benchmark, :limiters
+    attr_reader :name, :hook, :success, :benchmark, :limiters
 
     alias_method :title, :name
     alias_method :success?, :success
 
     class << self
       def key_from_name(name)
-        name.to_s.downcase.gsub(/[\W\s]+/, '_').to_sym
+        name.to_s.underscore.to_sym
       end
     end
 
@@ -74,16 +74,13 @@ module GitHooks
     end
 
     def colored_name(phase = GitHooks::HOOK_NAME)
-      status_colorize name(phase)
+      title = name(phase)
+      return title.color_unknown! unless finished? && completed?
+      success? ? title.color_success! : title.color_failure!
     end
 
     def key_name
       self.class.key_from_name(@name)
-    end
-
-    def status_colorize(text)
-      return text.unknown! unless finished? && completed?
-      success? ? text.success! : text.failure!
     end
 
     def run
