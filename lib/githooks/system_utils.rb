@@ -64,7 +64,7 @@ module GitHooks
 
       ENV_WHITELIST = %w(
         PATH HOME LDFLAGS CPPFLAGS DISPLAY EDITOR
-        LANG LC_ALL SHELL SHLVL TERM TMPDIR USER
+        LANG LC_ALL SHELL SHLVL TERM TMPDIR USER HOME
         SSH_USER SSH_AUTH_SOCK
         GEM_HOME GEM_PATH MY_RUBY_HOME
         GIT_DIR GIT_AUTHOR_DATE GIT_INDEX_FILE GIT_AUTHOR_NAME GIT_PREFIX GIT_AUTHOR_EMAIL
@@ -134,9 +134,22 @@ module GitHooks
         options.delete(:use_name) ? name : bin_path.to_s
       end
 
-      def prep_env(env = {})
-        Hash[env].each_with_object([]) do |(k, v), array|
-          array << %Q|#{k}="#{v}"| if ENV_WHITELIST.include? k
+      def prep_env(env = ENV, options = {})
+        include_keys = options.delete(:include) || ENV_WHITELIST
+        exclude_keys = options.delete(:exclude) || []
+
+        if exclude_keys.size > 0 && include_keys.size > 0
+          raise ArgumentError, "include and exclude are mutually exclusive"
+        end
+
+        Hash[env].each_with_object([]) do |(key, value), array|
+          if exclude_keys.size > 0
+            next if exclude_keys.include?(key)
+          elsif include_keys.size > 0
+            next unless include_keys.include?(key)
+          end
+
+          array << %Q'#{key}=#{value.inspect}'
         end
       end
 
@@ -156,7 +169,9 @@ module GitHooks
         command.push options.delete(:post_run) if options[:post_run]
         command = shellwords(command.flatten.join(';'))
 
-        environment = prep_env(options.delete(:env) || ENV).join(' ')
+        command_env    = options.delete(:env) || {}
+        whitelist_keys = ENV_WHITELIST | command_env.keys
+        environment    = prep_env(ENV.to_h.merge(command_env), include: whitelist_keys).join(' ')
 
         error_file = Tempfile.new('ghstderr')
 

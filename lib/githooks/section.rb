@@ -48,6 +48,7 @@ module GitHooks
     # overrides previous action method to only return
     # actions that have a non-empty manifest
     def actions
+      return @actions unless @hook.phase == 'pre-commit'
       @actions.reject { |action| action.manifest.empty? }
     end
     alias_method :__getobj__, :actions
