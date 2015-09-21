@@ -20,4 +20,4 @@ source "http://rubygems.org"
 
 gem 'rubocop', '~> 0.18'
 gem 'ruby-lint', '~> 2.0'
-gem 'rabbitt-githooks', '~> 1.4.0'
+gem 'rabbitt-githooks', '~> 1.5.0'
