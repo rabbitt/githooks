@@ -73,7 +73,11 @@ module GitHooks
           begin
             was_skipped = catch(:skip) do
               @success &= @on.call
+              # was_skipped gets set to the return value of the block
+              # which we want to be false unless `throw :skip` is called
+              false
             end
+            return @success
           rescue StandardError => e
             $stderr.puts "Exception thrown during action call: #{e.class.name}: #{e.message}"
             if GitHooks.debug?
@@ -85,6 +89,7 @@ module GitHooks
             end
             @success = false
           ensure
+            STDERR.puts "WAS_SKIPPED? -> #{was_skipped.inspect} (#{@status.inspect})" if GitHooks.debug?
             was_skipped ? skipped! : finished!
           end
         }

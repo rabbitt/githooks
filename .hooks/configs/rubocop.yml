@@ -91,3 +91,6 @@ Style/TrailingComma:
 
 Style/FileName:
   Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false

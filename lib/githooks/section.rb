@@ -62,7 +62,7 @@ module GitHooks
     end
 
     def completed?
-      @actions.all?(&:finished?)
+      finished? && @actions.all?(&:finished?)
     end
 
     def wait_count
@@ -76,8 +76,9 @@ module GitHooks
     def colored_name(phase = GitHooks::HOOK_NAME)
       title = name(phase)
       return title.color_skipped! if @actions.all?(&:skipped?)
-      return title.color_unknown! unless finished? && completed?
-      success? ? title.color_success! : title.color_failure!
+      return title.color_unknown! unless completed?
+      return title.color_failure! unless success?
+      title.color_success!
     end
 
     def key_name
@@ -89,10 +90,9 @@ module GitHooks
       begin
         time_start = Time.now
         actions.collect { |action|
-          catch(:skip) do
-            @success &= action.run
-          end
-          @success
+          @success &= action.run.tap { |r|
+            STDERR.puts "#{action.title} -> #{r.inspect}" if GitHooks.debug?
+          }
         }.all?
       ensure
         @benchmark = Time.now - time_start

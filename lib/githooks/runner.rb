@@ -81,12 +81,12 @@ module GitHooks
       bootstrapper = Pathname.new(options.bootstrap).realpath if options.bootstrap
 
       if entry_path.directory?
-        if repository.hooks_path # rubocop:disable AssignmentInCondition
+        if repository.hooks_path
           fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to hook path #{repository.hooks_path} - Detach to continue."
         end
         repository.config.set('hooks-path', entry_path)
       elsif entry_path.executable?
-        if repository.hooks_script # rubocop:disable AssignmentInCondition
+        if repository.hooks_script
           fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to script #{repository.hooks_script}. Detach to continue."
         end
         repository.config.set('script', entry_path)
@@ -251,8 +251,13 @@ module GitHooks
       success = false if ENV['GITHOOKS_FORCE_FAIL']
 
       unless success
-        $stderr.puts 'Commit failed due to errors listed above.'
-        $stderr.puts 'Please fix and attempt your commit again.'
+        command = case phase
+          when /commit/i then 'commit'
+          when /push/i then 'push'
+          else phase
+        end
+        $stderr.puts "#{command.capitalize} failed due to errors listed above."
+        $stderr.puts "Please fix and attempt your #{command} again."
       end
 
       exit(success ? 0 : 1)
@@ -291,11 +296,11 @@ module GitHooks
           ::Bundler.require(:default)
         rescue LoadError
           puts %q"Unable to load bundler - please make sure it's installed."
-          raise # rubocop:disable SignalException
+          raise
         rescue ::Bundler::GemNotFound => e
           puts "Error: #{e.message}"
           puts 'Did you bundle install your Gemfile?'
-          raise # rubocop:disable SignalException
+          raise
         end
       end
 
