@@ -60,6 +60,3 @@ DEPENDENCIES
   ruby-lint (~> 2.0)
   simplecov (~> 0.9)
   yard (~> 0.7)
-
-BUNDLED WITH
-   1.10.6

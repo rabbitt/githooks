@@ -21,7 +21,7 @@ require 'set'
 require 'singleton'
 
 module GitHooks
-  class Repository # rubocop:disable ClassLength
+  class Repository
     extend SystemUtils
 
     command :git
@@ -75,23 +75,20 @@ module GitHooks
       git(*%w(stash pop -q)).status.success?
     end
 
-    def manifest(options = {}) # rubocop:disable AbcSize
+    def manifest(options = {})
       ref = options.delete(:ref)
+
       return staged_manifest(ref: ref) if options.delete(:staged)
 
       manifest_list = unstaged_manifest(ref: ref)
 
-      if options.delete(:tracked)
-        tracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
-          list << file
-        end
-      end
+      tracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
+        list << file
+      end if options.delete(:tracked)
 
-      if options.delete(:untracked)
-        untracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
-          list << file
-        end
-      end
+      untracked_manifest(ref: ref).each_with_object(manifest_list) do |file, list|
+        list << file
+      end if options.delete(:untracked)
 
       manifest_list.sort
     end
@@ -119,6 +116,28 @@ module GitHooks
         next unless self.path.join(path).file?
         DiffIndexEntry.from_file_path(self, path).to_repo_file
       }.compact
+    end
+
+    def unpushed_commits
+      result = git('log', '--format=%H', '@{upstream}..')
+      if result.failure?
+        if result.error =~ /^fatal: no upstream configured for branch '([^']+)'/
+          fail Error::RemoteNotSet, "No upstream remote configured for '#{$1}'"
+        else
+          fail Error::CommandExecutionFailure, result.error
+        end
+      end
+      result.output.split(/\s*\n\s*/).collect(&:strip)
+    end
+
+    def revision_parent(revision)
+      return unless (result = git('rev-parse', "#{revision}~1")).status.success?
+      result.output.strip
+    end
+
+    def last_unpushed_commit_parent
+      oldest_sha = unpushed_commits.last
+      revision_parent(oldest_sha) unless oldest_sha.nil?
     end
 
   private

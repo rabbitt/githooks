@@ -22,7 +22,7 @@ require 'stringio'
 require_relative 'repository'
 
 module GitHooks
-  class Action # rubocop:disable Metrics/ClassLength
+  class Action
     attr_reader :title, :section, :on, :limiters
     attr_reader :success, :errors, :warnings, :benchmark
     private :section, :on
@@ -59,17 +59,19 @@ module GitHooks
       success? ? GitHooks::SUCCESS_SYMBOL : GitHooks::FAILURE_SYMBOL
     end
 
-    %w(finished running waiting).each do |method|
+    %w[finished running waiting skipped].each do |method|
       define_method(:"#{method}?") { @status == method.to_sym }
       define_method(:"#{method}!") { @status = method.to_sym }
     end
 
-    def run # rubocop:disable MethodLength, AbcSize
+    def run # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
       running!
       with_benchmark do
         with_captured_output {
           begin
-            @success &= @on.call
+            was_skipped = catch(:skip) do
+              @success &= @on.call
+            end
           rescue StandardError => e
             $stderr.puts "Exception thrown during action call: #{e.class.name}: #{e.message}"
             if GitHooks.debug?
@@ -81,7 +83,7 @@ module GitHooks
             end
             @success = false
           ensure
-            finished!
+            was_skipped ? skipped! : finished!
           end
         }
       end
@@ -123,6 +125,10 @@ module GitHooks
     end
 
     # DSL Methods
+
+    def skip!
+      throw :skip, true
+    end
 
     def config_path
       GitHooks.hooks_root.join('configs')
