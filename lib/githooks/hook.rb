@@ -108,7 +108,7 @@ module GitHooks
     private :setup_command
 
     def find_command(name)
-      @commands.select { |command| command.name == name.to_s }.first
+      @commands.find { |command| command.name == name.to_s }
     end
 
     def sections
@@ -169,22 +169,32 @@ module GitHooks
         @hook = hook
       end
 
-      def repo
+      def repository
         @hook.repository
       end
 
-      def manifest
-        @files ||= repo.manifest(
-          staged:    hook.staged,
-          tracked:   hook.tracked,
-          untracked: hook.untracked
-        )
+      def files
+        @files ||= begin
+          options = {
+            staged:    hook.staged,
+            tracked:   hook.tracked,
+            untracked: hook.untracked
+          }
+
+          if %w[ commit-msg pre-push ].include? hook.phase
+            if (parent_sha = repository.last_unpushed_commit_parent)
+              options.merge!(ref: parent_sha)
+            end
+          end
+
+          repository.manifest(options)
+        end
       end
 
       def filter(limiters)
-        manifest.dup.tap do |files|
+        files.dup.tap do |files|
           limiters.each do |type, limiter|
-            puts "Limiter [#{type}] -> (#{limiter.only.inspect}) match against: " if GitHooks.debug?
+            STDERR.puts "Limiter [#{type}] -> (#{limiter.only.inspect}) match against: " if GitHooks.debug?
             limiter.limit(files)
           end
         end

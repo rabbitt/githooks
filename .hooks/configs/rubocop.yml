@@ -24,9 +24,6 @@ Encoding:
 MultilineBlockChain:
   Enabled: false
 
-Blocks:
-  Enabled: false
-
 RegexpLiteral:
   Enabled: false
 
@@ -80,13 +77,13 @@ Style/DoubleNegation:
 SpaceInsideBrackets:
   Enabled: false
 
-UnneededPercentX:
-  Enabled: false
-
 PercentLiteralDelimiters:
   Enabled: false
 
 BarePercentLiterals:
+  Enabled: false
+
+Style/BlockDelimiters:
   Enabled: false
 
 Style/TrailingComma:

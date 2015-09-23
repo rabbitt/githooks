@@ -48,7 +48,6 @@ module GitHooks
     # overrides previous action method to only return
     # actions that have a non-empty manifest
     def actions
-      return @actions unless @hook.phase == 'pre-commit'
       @actions.reject { |action| action.manifest.empty? }
     end
     alias_method :__getobj__, :actions
@@ -57,7 +56,7 @@ module GitHooks
       @actions << action
     end
 
-    %w(finished running waiting).each do |method|
+    %w(finished running waiting skipped).each do |method|
       define_method(:"#{method}?") { @status == method.to_sym }
       define_method(:"#{method}!") { @status = method.to_sym }
     end
@@ -67,7 +66,7 @@ module GitHooks
     end
 
     def wait_count
-      @actions.select(&:waiting?).size
+      @actions.count(&:waiting?)
     end
 
     def name(phase = GitHooks::HOOK_NAME)
@@ -76,6 +75,7 @@ module GitHooks
 
     def colored_name(phase = GitHooks::HOOK_NAME)
       title = name(phase)
+      return title.color_skipped! if @actions.all?(&:skipped?)
       return title.color_unknown! unless finished? && completed?
       success? ? title.color_success! : title.color_failure!
     end
@@ -88,7 +88,12 @@ module GitHooks
       running!
       begin
         time_start = Time.now
-        actions.collect { |action| @success &= action.run }.all?
+        actions.collect { |action|
+          catch(:skip) do
+            @success &= action.run
+          end
+          @success
+        }.all?
       ensure
         @benchmark = Time.now - time_start
         finished!

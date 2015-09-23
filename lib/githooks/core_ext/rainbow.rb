@@ -34,6 +34,10 @@ module Rainbow
           color(:yellow).bright
         end
         alias_method :color_warning!, :color_unknown!
+
+        def color_skipped!
+          color(:cyan)
+        end
       end
     end
   end

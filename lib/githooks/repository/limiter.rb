@@ -44,7 +44,7 @@ module GitHooks
           match_file(file, @only).tap do |result|
             if GitHooks.debug?
               result = (result ? 'success' : 'failure')
-              puts "  #{file.path} (#{file.attribute_value(@type).inspect}) was a #{result}"
+              STDERR.puts "  #{file.path} (#{file.attribute_value(@type).inspect}) was a #{result}"
             end
           end
         end
