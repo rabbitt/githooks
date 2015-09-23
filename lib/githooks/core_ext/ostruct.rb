@@ -23,7 +23,8 @@ class IndifferentAccessOpenStruct < OpenStruct
   def new_ostruct_member(name)
     return super unless name.to_s.include? '-'
 
-    original_name, sanitized_name = name, name.to_s.gsub('-', '_').to_sym
+    original_name = name
+    sanitized_name = name.to_s.tr('-', '_').to_sym
     return if respond_to?(sanitized_name)
 
     define_singleton_method(sanitized_name) { @table[original_name] }

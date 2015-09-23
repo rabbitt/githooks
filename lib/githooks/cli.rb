@@ -14,7 +14,7 @@ module GitHooks
       desc :version, 'display version information'
       def version
         puts "GitHooks: #{GitHooks::VERSION}"
-        puts "Git     : #{%x{git --version | grep git}.split(/\s+/).last}"
+        puts "Git     : #{`git --version | grep git`.split(/\s+/).last}"
         puts "Bundler : #{Bundler::VERSION}"
         puts "Ruby    : #{RUBY_ENGINE} #{RUBY_VERSION}p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE})"
       end
@@ -84,7 +84,7 @@ module GitHooks
       method_option :'skip-pre', type: :boolean, desc: 'Skip PreRun Scripts', default: false
       method_option :'skip-post', type: :boolean, desc: 'Skip PostRun Scripts', default: false
       method_option :'skip-bundler', type: :boolean, desc: %q"Don't load bundler gemfile", default: false
-      method_option :'hook', type: :string, enum: Hook::VALID_PHASES, desc: 'Hook to run', default: 'pre-commit'
+      method_option :hook, type: :string, enum: Hook::VALID_PHASES, desc: 'Hook to run', default: 'pre-commit'
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
       def execute
         GitHooks.verbose = options['verbose']

@@ -38,7 +38,7 @@ class String
 
   def camelize!
     tap do
-      gsub!('-', '_')
+      tr!('-', '_')
       sub!(/^[a-z\d]*/, &:capitalize)
       gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{$2.capitalize}" }
       gsub!('/', '::')
@@ -79,7 +79,7 @@ class String
   def dasherize!
     tap do
       underscore!
-      gsub!(/_/, '-')
+      tr!('_', '-')
     end
   end
 end

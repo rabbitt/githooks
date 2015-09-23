@@ -31,7 +31,7 @@ module GitHooks
       attr_reader :__phases__
       alias_method :phases, :__phases__
 
-      def instance(phase = 'pre-commit') # rubocop:disable AbcSize
+      def instance(phase = 'pre-commit')
         phase = phase.to_s
         unless VALID_PHASES.include? phase
           fail ArgumentError, "Hook phase (#{phase}) must be one of #{VALID_PHASES.join(', ')}"
@@ -94,7 +94,7 @@ module GitHooks
     end
 
     def method_missing(method, *args, &block)
-      return super unless command = find_command(method) # rubocop:disable AssignmentInCondition
+      return super unless command = find_command(method) # rubocop:disable Lint/AssignmentInCondition
       command.execute(*args, &block)
     end
 

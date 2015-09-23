@@ -28,23 +28,21 @@ require_relative 'system_utils'
 
 module GitHooks
   class Runner # rubocop:disable Metrics/ClassLength
-    attr_reader :repository, :script, :hook_path, :repo_path, :options
-    private :repository, :script, :hook_path, :repo_path, :options
+    attr_reader :repository, :options, :runner, :phase
+    private :repository, :options, :runner, :phase
 
-    def initialize(options = {}) # rubocop:disable Metrics/AbcSize
-      @repo_path  = Pathname.new(options.delete('repo') || Dir.getwd)
-      @repository = Repository.new(@repo_path)
-      @hook_path  = acquire_hooks_path(options.delete('hooks-path') || @repository.config.hooks_path || @repository.path)
-      @script     = options.delete('script') || @repository.hooks_script
+    def initialize(options = {})
+      @repository = Repository.new(Pathname.new(options.delete('repo') || Dir.getwd))
       @options    = IndifferentAccessOpenStruct.new(options)
 
       GitHooks.verbose = !!ENV['GITHOOKS_VERBOSE']
       GitHooks.debug   = !!ENV['GITHOOKS_DEBUG']
     end
 
-    # rubocop:disable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def run
       options.staged = options.staged.nil? ? true : options.staged
+      @phase = options.hook || GitHooks.hook_name || 'pre-commit'
 
       if options.skip_pre
         puts 'Skipping PreRun Executables'
@@ -80,28 +78,33 @@ module GitHooks
       hook_phases  = options.hooks || Hook::VALID_PHASES
       bootstrapper = Pathname.new(options.bootstrap).realpath if options.bootstrap
 
-      if entry_path.directory?
-        if repository.hooks_path # rubocop:disable AssignmentInCondition
-          fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to hook path #{repository.hooks_path} - Detach to continue."
+      hooks_phases.each do |hook|
+        hook_path = repository.hooks_path(hook)
+        script
+        if entry_path.directory?
+          if repository.hooks_path(hook)
+            fail Error::AlreadyAttached, "Repository [#{repository.name}] hook [#{hook}] already attached to #{repository.hooks_path(hook)} - Detach to continue."
+          end
+          repository.config.set('hooks-path', entry_path)
+        elsif entry_path.executable?
+          if repository.hooks_script(hook)
+            fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to script #{repository.hooks_script}. Detach to continue."
+          end
+          repository.config.set('script', entry_path)
+        else
+          fail ArgumentError, "Provided path '#{entry_path}' is neither a directory nor an executable file."
         end
-        repository.config.set('hooks-path', entry_path)
-      elsif entry_path.executable?
-        if repository.hooks_script # rubocop:disable AssignmentInCondition
-          fail Error::AlreadyAttached, "Repository [#{repo_path}] already attached to script #{repository.hooks_script}. Detach to continue."
+
+        gitrunner = bootstrapper
+        gitrunner ||= SystemUtils.which('githooks-runner')
+        gitrunner ||= (GitHooks::BIN_PATH + 'githooks-runner').realpath
+
+        hook_phases.each do |hook|
+          # if bootstrapper
+          #   @repository
+          # end
+          bootstrapper ? @repository.link(hook, bootstrapper) : @repository.link(hook)
         end
-        repository.config.set('script', entry_path)
-      else
-        fail ArgumentError, "Provided path '#{entry_path}' is neither a directory nor an executable file."
-      end
-
-      gitrunner = bootstrapper
-      gitrunner ||= SystemUtils.which('githooks-runner')
-      gitrunner ||= (GitHooks::BIN_PATH + 'githooks-runner').realpath
-
-      hook_phases.each do |hook|
-        hook = (@repository.hooks + hook).to_s
-        puts "Linking #{gitrunner} -> #{hook}" if GitHooks.verbose
-        FileUtils.ln_sf gitrunner.to_s, hook
       end
     end
 
@@ -123,7 +126,7 @@ module GitHooks
     end
 
     def list
-      unless script || hook_path
+      unless repository.configured?
         fail Error::NotAttached, 'Repository currently not configured. Usage attach to setup for use with githooks.'
       end
 
@@ -133,28 +136,27 @@ module GitHooks
         puts
       end
 
-      if script
-        puts 'Main Test Script:'
-        puts "  #{script}"
-        puts
-      end
+      puts "Bootstrap Runner : #{runner}" unless runner.nil?
+      puts "Main Test Script : #{script}" unless script.nil?
 
       if hook_path
-        puts 'Main Testing Library with Tests (in execution order):'
-        puts '  Tests loaded from:'
-        puts "    #{hook_path}"
+        puts "Tests loaded from: #{hook_path}"
+        puts
+        puts 'Tests (in execution order):'
         puts
 
         SystemUtils.quiet { load_tests(true) }
 
-        %w{ pre-commit commit-msg }.each do |phase|
+        GitHooks::Hook::VALID_PHASES.each do |phase|
           next unless Hook.phases[phase]
 
           puts "  Phase #{phase.camelize}:"
           Hook.phases[phase].sections.each_with_index do |section, section_index|
             printf "    %3d: %s\n", section_index + 1, section.title
+
             section.actions.each_with_index do |action, action_index|
               printf "      %3d: %s\n", action_index + 1, action.title
+
               action.limiters.each_with_index do |limiter, limiter_index|
                 type, value = limiter.type.inspect, limiter.only
                 value = value.first if value.size == 1
@@ -205,7 +207,7 @@ module GitHooks
       } || fail(TestsFailed, "Failed #{which.camelize} executables - giving up")
     end
 
-    def start # rubocop:disable  CyclomaticComplexity,  MethodLength
+    def start
       phase = options.hook || GitHooks.hook_name || 'pre-commit'
       puts "PHASE: #{phase}" if GitHooks.debug
 
@@ -291,11 +293,11 @@ module GitHooks
           ::Bundler.require(:default)
         rescue LoadError
           puts %q"Unable to load bundler - please make sure it's installed."
-          raise # rubocop:disable SignalException
+          raise
         rescue ::Bundler::GemNotFound => e
           puts "Error: #{e.message}"
           puts 'Did you bundle install your Gemfile?'
-          raise # rubocop:disable SignalException
+          raise
         end
       end
 
@@ -318,6 +320,6 @@ module GitHooks
       true
     end
 
-    # rubocop:enable CyclomaticComplexity, MethodLength, AbcSize, PerceivedComplexity
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics:CyclomaticComplexity, Metrics:PerceivedComplexity
   end
 end

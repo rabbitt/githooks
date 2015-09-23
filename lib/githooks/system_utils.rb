@@ -13,13 +13,11 @@ module GitHooks
     module_function :which
 
     def find_bin(name)
-      # rubocop:disable MultilineBlockChain, Blocks
       ENV['PATH'].split(/:/).collect { |path|
         Pathname.new(path) + name.to_s
       }.select { |path|
         path.exist? && path.executable?
       }.collect(&:to_s)
-      # rubocop:enable MultilineBlockChain, Blocks
     end
     module_function :find_bin
 
@@ -134,12 +132,12 @@ module GitHooks
         options.delete(:use_name) ? name : bin_path.to_s
       end
 
-      def prep_env(env = ENV, options = {})
+      def prep_env(env = ENV, options = {}) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         include_keys = options.delete(:include) || ENV_WHITELIST
         exclude_keys = options.delete(:exclude) || []
 
         if exclude_keys.size > 0 && include_keys.size > 0
-          raise ArgumentError, "include and exclude are mutually exclusive"
+          fail ArgumentError, 'include and exclude are mutually exclusive'
         end
 
         Hash[env].each_with_object([]) do |(key, value), array|
@@ -149,7 +147,7 @@ module GitHooks
             next unless include_keys.include?(key)
           end
 
-          array << %Q'#{key}=#{value.inspect}'
+          array << "#{key}=#{value.inspect}"
         end
       end
 

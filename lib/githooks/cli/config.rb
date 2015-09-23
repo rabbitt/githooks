@@ -4,7 +4,9 @@ require 'githooks/repository'
 module GitHooks
   module CLI
     class Config < Thor
-      VALID_CONFIG_OPTIONS = Repository::Config::OPTIONS.keys.freeze
+      VALID_CONFIG_OPTIONS = Repository::Config.config_options.collect { |_, option|
+        [ option.key_name, option.config_name ]
+      }.flatten.freeze
 
       # class_option :verbose, type: :boolean, desc: 'verbose output', default: false
       # class_option :debug, type: :boolean, desc: 'debug output', default: false
@@ -22,7 +24,7 @@ module GitHooks
       }
 
       desc :get, 'display the value for a configuration option'
-      def get(option) # rubocop:disable MethodLength, AbcSize
+      def get(option) # rubocop:disable Metrics/AbcSize
         unless VALID_CONFIG_OPTIONS.include? option
           puts "Invalid option '#{option}': expected one of #{VALID_CONFIG_OPTIONS.join(', ')}"
           return 1
@@ -83,7 +85,8 @@ module GitHooks
         return unless githooks
 
         githooks.each do |path, data|
-          key_size, value_size = data.keys.collect(&:size).maximum, data.values.collect(&:size).maximum
+          key_size       = data.keys.collect(&:size).maximum
+          value_size     = data.values.collect(&:size).maximum
           display_format = "    %-#{key_size}s = %-#{value_size}s\n"
 
           puts "Repository [#{File.basename(path)}]"

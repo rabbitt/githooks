@@ -51,12 +51,20 @@ module GitHooks
       @config = Repository::Config.new(self)
     end
 
-    def hooks_script
-      config['script']
+    def name
+      @path.basename
     end
 
-    def hooks_path
-      config['hooks-path']
+    def configured?
+      !config.empty?
+    end
+
+    def hooks_script(hook)
+      config.get(hook, 'script')
+    end
+
+    def hooks_path(hook)
+      config.get(hook, 'hooks-path')
     end
 
     def get_root_path(path)

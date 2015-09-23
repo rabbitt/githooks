@@ -71,6 +71,9 @@ EmptyLinesAroundAccessModifier:
 EndAlignment:
   AlignWith: variable
 
+Metrics/AbcSize:
+  Max: 19
+
 Style/DoubleNegation:
   Enabled: false
 
@@ -91,3 +94,10 @@ Style/TrailingComma:
 
 Style/FileName:
   Enabled: false
+
+Style/CommandLiteral:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+

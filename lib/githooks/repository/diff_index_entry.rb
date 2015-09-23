@@ -32,8 +32,7 @@ module GitHooks
         super parse_data(entry)
       end
 
-      # rubocop:disable MultilineOperationIndentation
-      def parse_data(entry) # rubocop:disable MethodLength, AbcSize
+      def parse_data(entry) # rubocop:disable Metrics/AbcSize
         data = Hash[
           DIFF_STRUCTURE_REGEXP.names.collect(&:to_sym).zip(
             entry.match(DIFF_STRUCTURE_REGEXP).captures
@@ -65,7 +64,9 @@ module GitHooks
         attr_reader :mode, :sha, :path
 
         def initialize(mode, sha, path)
-          @mode, @sha, @path = mode, sha, path
+          @mode = mode
+          @sha = sha
+          @path = path
         end
 
         def inspect
