@@ -60,11 +60,13 @@ module GitHooks
     end
 
     def get_root_path(path)
-      git('rev-parse', '--show-toplevel', chdir: path).tap do |result|
-        unless result.status.success? && result.output !~ /not a git repository/i
-          fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
-        end
-      end.output.strip
+      @root_path ||= begin
+        git('rev-parse', '--show-toplevel', chdir: path).tap do |result|
+          unless result.status.success? && result.output !~ /not a git repository/i
+            fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
+          end
+        end.output.strip
+      end
     end
 
     def stash

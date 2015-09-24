@@ -173,7 +173,7 @@ module GitHooks
         @hook.repository
       end
 
-      def files
+      def files # rubocop:disable Metrics/AbcSize
         @files ||= begin
           options = {
             staged:    hook.staged,
@@ -182,8 +182,15 @@ module GitHooks
           }
 
           if %w[ commit-msg pre-push ].include? hook.phase
-            if (parent_sha = repository.last_unpushed_commit_parent)
-              options.merge!(ref: parent_sha)
+            begin
+              if (parent_sha = repository.last_unpushed_commit_parent)
+                options.merge!(ref: parent_sha)
+              end
+            rescue Error::RemoteNotSet
+              # remote not set yet, so let's only focus on what's tracked for now
+              options[:tracked]   = true
+              options[:untracked] = false
+              options[:staged]    = false
             end
           end
 
