@@ -266,7 +266,7 @@ module GitHooks
     def load_tests(skip_bundler = nil)
       skip_bundler = skip_bundler.nil? ? options.skip_bundler : skip_bundler
 
-      hooks_path = repository.hooks_path
+      hooks_path = @hook_path.dup
       hooks_libs = hooks_path.join('lib')
       hooks_init = (p = hooks_path.join('hooks_init.rb')).exist? ? p : hooks_path.join('githooks_init.rb')
       gemfile    = hooks_path.join('Gemfile')
