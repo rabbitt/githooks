@@ -19,7 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 module GitHooks
   class Repository
-    class Config # rubocop:disable ClassLength
+    class Config
       OPTIONS = {
         'hooks-path'       => { type: :path, multiple: false },
         'script'           => { type: :path, multiple: false },
@@ -28,7 +28,7 @@ module GitHooks
       }.freeze unless defined? OPTIONS
 
       OPTIONS.keys.each do |name|
-        method_name = name.gsub(/-/, '_')
+        method_name = name.tr('-', '_')
         class_eval(<<-EOS, __FILE__, __LINE__ + 1)
           def #{method_name}(options = {})
             result = get('#{name}', options)
@@ -39,10 +39,11 @@ module GitHooks
 
       def initialize(repository)
         @repository = repository
+        @config = nil
       end
 
       def [](option)
-        send(option.to_s.gsub('-', '_'))
+        send(option.to_s.tr('-', '_'))
       end
 
       def set(option, value, options = {}) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
@@ -76,17 +77,19 @@ module GitHooks
         option = "githooks.#{repo}.#{option}"
         git(global, var_type, add_type, option, value, chdir: repo).tap do |result|
           puts "Added option #{option} with value #{value}" if result.status.success?
+          @config = nil # reset config
         end
       end
 
       def remove_section(options = {})
-        repo   = options.delete(:repo_path) || @repository.path
-        global = (opt = options.delete(:global)).nil? ? false : opt
-        global = global ? '--global' : '--local'
+        repo    = options.delete(:repo_path) || @repository.path
+        global  = (opt = options.delete(:global)).nil? ? false : opt
+        global  = global ? '--global' : '--local'
+        @config = nil # reset config
         git(global, '--remove-section', "githooks.#{repo}", chdir: repo)
       end
 
-      def unset(option, *args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity
+      def unset(option, *args) # rubocop:disable AbcSize
         options = args.extract_options!
         global  = (opt = options.delete(:global)).nil? ? false : opt
         global  = global ? '--global' : '--local'
@@ -99,6 +102,8 @@ module GitHooks
         else
           git(global, '--unset', option, value_regex, options)
         end
+
+        @config = nil # reset config
 
         result.status.success?
       end
@@ -140,23 +145,25 @@ module GitHooks
         @repository.git(:config, *args)
       end
 
-      def config(*args) # rubocop:disable CyclomaticComplexity, MethodLength, PerceivedComplexity, AbcSize
-        raw_config = git('--list', *args).output.split("\n").sort.uniq
-        raw_config.each_with_object({}) do |line, hash|
-          key, value = line.split(/\s*=\s*/)
-          key_parts = key.git_option_path_split
+      def config(*args) # rubocop:disable AbcSize
+        @config ||= begin
+          raw_config = git('--list', *args).output.split("\n").sort.uniq
+          raw_config.each_with_object({}) do |line, hash|
+            key, value = line.split(/\s*=\s*/)
+            key_parts = key.git_option_path_split
 
-          ptr = hash[key_parts.shift] ||= {} # rubocop:disable IndentationWidth
-          ptr = ptr[key_parts.shift]  ||= {} until key_parts.size == 1
+            ptr = hash[key_parts.shift] ||= {}
+            ptr = ptr[key_parts.shift] ||= {} until key_parts.size == 1
 
-          key = key_parts.shift
-          case ptr[key]
-            when nil then ptr[key] = value
-            when Array then ptr[key] << value
-            else ptr[key] = [ptr[key], value].flatten
+            key = key_parts.shift
+            case ptr[key]
+              when nil then ptr[key] = value
+              when Array then ptr[key] << value
+              else ptr[key] = [ptr[key], value].flatten
+            end
+
+            hash
           end
-
-          hash
         end
       end
     end

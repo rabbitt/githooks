@@ -60,11 +60,11 @@ module GitHooks
     end
 
     def get_root_path(path)
-        git('rev-parse', '--show-toplevel', chdir: path).tap do |result|
-          unless result.status.success? && result.output !~ /not a git repository/i
-            fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
-          end
-        end.output.strip
+      git('rev-parse', '--show-toplevel', chdir: path).tap do |result|
+        unless result.status.success? && result.output !~ /not a git repository/i
+          fail Error::NotAGitRepo, "Unable to find a valid git repo in #{path}"
+        end
+      end.output.strip
     end
 
     def stash
@@ -121,8 +121,8 @@ module GitHooks
     def unpushed_commits
       result = git('log', '--format=%H', '@{upstream}..')
       if result.failure?
-        if result.error =~ /^fatal: no upstream configured for branch '([^']+)'/
-          fail Error::RemoteNotSet, "No upstream remote configured for '#{$1}'"
+        if result.error =~ /no upstream configured for branch (["'])((?:(?!\1).)+)\1\z/i
+          fail Error::RemoteNotSet, "No upstream remote configured for '#{$2}'"
         else
           fail Error::CommandExecutionFailure, result.error
         end

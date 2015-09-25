@@ -32,3 +32,5 @@ test/version_tmp
 tmp
 test.rb
 t.rb
+
+.hooks/Gemfile.lock

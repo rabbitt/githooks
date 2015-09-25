@@ -1,6 +1,12 @@
 require 'githooks'
 
-SIMPLE_MESSAGES = /^\s*(blah|\.+|foo|bar|baz|nits?|)\s*$/
+SIMPLE_MESSAGES = /(blah|foo|bar|baz|nits?)/i
+
+def commit_message(file)
+  IO.readlines(file).collect(&:strip).reject do |line|
+    line =~ /\A\s*(#.*)?$/
+  end.join("\n")
+end
 
 GitHooks::Hook.register 'commit-msg' do
   section 'Commit Message' do
@@ -8,21 +14,24 @@ GitHooks::Hook.register 'commit-msg' do
       on_argv do |args|
         if args.empty?
           $stderr.puts 'No commit message file passed in - are we executing in the commit-msg phase??'
-          return false
+          skip!
+        else
+          STDERR.puts "#{title}: args -> #{args.inspect}"
+          STDERR.puts "#{title}: #{args.first} size -> #{commit_message(args.first).size}"
         end
 
-        IO.read(args.first).size > 5 unless args.empty?
+        commit_message(args.first).size > 5
       end
     end
 
-    action 'Verify no simple commit messages' do
+    action 'Verify no simple commit messages or words' do
       on_argv do |args|
         if args.empty?
           $stderr.puts 'No commit message file passed in - are we executing in the commit-msg phase??'
-          return false
+          skip!
         end
-        # make sure there is at least one line that isn't a simple message
-        IO.read(args.first).split(/\n/).any? { |line| line !~ SIMPLE_MESSAGES }
+
+        commit_message(args.first) != SIMPLE_MESSAGES
       end
     end
   end
