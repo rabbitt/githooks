@@ -47,7 +47,7 @@ module GitHooks
 
       def limit(files)
         files.select! do |file|
-          match_file(file, @only).tap do |result|
+          match_file(file).tap do |result|
             if GitHooks.debug?
               result = (result ? 'success' : 'failure')
               STDERR.puts "  #{file.path} (#{file.attribute_value(@type).inspect}) was a #{result}"
@@ -62,11 +62,11 @@ module GitHooks
         @inverted = true
       end
 
-      def match_file(file, match_value)
+      def match_file(file)
         if @inverted
-          [*match_value].none? { |value| file.match(@type, value) }
+          Array(@only).none? { |value| file.match(@type, value) }
         else
-          [*match_value].any? { |value| file.match(@type, value) }
+          Array(@only).any? { |value| file.match(@type, value) }
         end
       end
     end

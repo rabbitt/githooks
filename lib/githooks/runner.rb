@@ -151,14 +151,23 @@ module GitHooks
           next unless Hook.phases[phase]
 
           puts "  Phase #{phase.camelize}:"
+
+          Hook.phases[phase].limiters.each_with_index do |(type, limiter), limiter_index|
+            selector = limiter.only.size > 1 ? limiter.only : limiter.only.first
+            printf "    Hook Limiter %d: %s -> %s\n", limiter_index + 1, type, selector.inspect
+          end
+
           Hook.phases[phase].sections.each_with_index do |section, section_index|
-            printf "    %3d: %s\n", section_index + 1, section.title
+            printf "    %d: %s\n", section_index + 1, section.title
             section.actions.each_with_index do |action, action_index|
-              printf "      %3d: %s\n", action_index + 1, action.title
-              action.limiters.each_with_index do |limiter, limiter_index|
-                type, value = limiter.type.inspect, limiter.only
-                value = value.first if value.size == 1
-                printf "          Limiter %d: %s -> %s\n", limiter_index + 1, type, value.inspect
+              section.limiters.each_with_index do |(type, limiter), limiter_index|
+                selector = limiter.only.size > 1 ? limiter.only : limiter.only.first
+                printf "      Section Limiter %d: %s -> %s\n", limiter_index + 1, type, selector.inspect
+              end
+              printf "      %d: %s\n", action_index + 1, action.title
+              action.limiters.each_with_index do |(type, limiter), limiter_index|
+                selector = limiter.only.size > 1 ? limiter.only : limiter.only.first
+                printf "        Action Limiter %d: %s -> %s\n", limiter_index + 1, type, selector.inspect
               end
             end
           end

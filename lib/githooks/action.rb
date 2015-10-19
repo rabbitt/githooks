@@ -23,7 +23,7 @@ require_relative 'repository'
 
 module GitHooks
   class Action
-    attr_reader :title, :section, :on, :limiters
+    attr_reader :title, :section, :on
     attr_reader :success, :errors, :warnings, :benchmark
     private :section, :on
     alias_method :success?, :success
@@ -45,8 +45,12 @@ module GitHooks
       waiting!
     end
 
+    def limiters
+      section.limiters.merge(@limiters)
+    end
+
     def manifest
-      @manifest ||= section.hook.manifest.filter(section.limiters.merge(@limiters))
+      @manifest ||= section.hook.manifest.filter(limiters)
     end
 
     def colored_title

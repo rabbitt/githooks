@@ -21,7 +21,7 @@ require 'delegate'
 
 module GitHooks
   class Section < DelegateClass(Array)
-    attr_reader :name, :hook, :success, :benchmark, :limiters
+    attr_reader :name, :hook, :success, :benchmark
 
     alias_method :title, :name
     alias_method :success?, :success
@@ -36,13 +36,17 @@ module GitHooks
       @name      = name.to_s.titleize
       @success   = true
       @actions   = []
-      @limiters  = hook.limiters
+      @limiters  = {}
       @hook      = hook
       @benchmark = 0
 
       instance_eval(&block)
 
       waiting!
+    end
+
+    def limiters
+      hook.limiters.merge(@limiters)
     end
 
     # overrides previous action method to only return

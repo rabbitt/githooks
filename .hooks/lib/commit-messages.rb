@@ -15,11 +15,7 @@ GitHooks::Hook.register 'commit-msg' do
         if args.empty?
           $stderr.puts 'No commit message file passed in - are we executing in the commit-msg phase??'
           skip!
-        else
-          STDERR.puts "#{title}: args -> #{args.inspect}"
-          STDERR.puts "#{title}: #{args.first} size -> #{commit_message(args.first).size}"
         end
-
         commit_message(args.first).size > 5
       end
     end
@@ -30,7 +26,6 @@ GitHooks::Hook.register 'commit-msg' do
           $stderr.puts 'No commit message file passed in - are we executing in the commit-msg phase??'
           skip!
         end
-
         commit_message(args.first) != SIMPLE_MESSAGES
       end
     end
