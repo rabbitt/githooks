@@ -8,7 +8,7 @@ RUBY_FILE_REGEXP = %r:
     bin/.+ |
     .hooks/.+?\.rb
   )$
-:xi
+:xi.freeze
 
 GitHooks::Hook.register 'pre-commit' do
   commands :ruby, :rubocop

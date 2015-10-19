@@ -7,7 +7,7 @@ module GitHooks
     class AlreadyAttached < GitHooks::Error; end
     class NotAttached < GitHooks::Error; end
     class InvalidPhase < GitHooks::Error; end
-
+    class InvalidLimiterCallable < GitHooks::Error; end
     class RemoteNotSet < GitHooks::Error
       attr_accessor :branch
     end

@@ -145,9 +145,9 @@ module GitHooks
         puts "    #{hook_path}"
         puts
 
-        SystemUtils.quiet { load_tests(true) }
+        GitHooks.quieted { load_tests(true) }
 
-        %w{ pre-commit commit-msg }.each do |phase|
+        Hook::VALID_PHASES.each do |phase|
           next unless Hook.phases[phase]
 
           puts "  Phase #{phase.camelize}:"

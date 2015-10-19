@@ -58,8 +58,7 @@ module GitHooks
         path.basename.to_s
       end
 
-      # rubocop:disable CyclomaticComplexity
-      def attribute_value(attribute)
+      def attribute_value(attribute) # rubocop:disable Metrics/CyclomaticComplexity
         case attribute
           when :name then name
           when :path then path.to_s
@@ -72,10 +71,32 @@ module GitHooks
         end
       end
 
-      def match(type, selector) # rubocop:disable AbcSize
-        value = attribute_value(type)
-        return selector.call(value) if selector.respond_to? :call
+      def match(type, selector)
+        if selector.respond_to? :call
+          match_callable(type, selector)
+        else
+          match_type(type, selector)
+        end
+      end
 
+      # rubocop:disable ElseAlignment, IndentationWidth
+      def match_callable(type, selector)
+        value = attribute_value(type)
+
+        case (arity = selector.arity)
+          when 0 then fail ArgumentError, 'limiter recieves no parameters'
+          when -4..-1, 3 then selector.call(value, type, self)
+          when 1 then selector.call(value)
+          when 2 then selector.call(value, type)
+        else
+          fail ArgumentError, 'expected limiter to receive at most 3 parameters, ' \
+                               "but it receives #{arity}"
+        end
+      end
+      # rubocop:enable ElseAlignment, IndentationWidth
+
+      def match_type(type, selector) # rubocop:disable AbcSize,CyclomaticComplexity
+        value = attribute_value(type)
         case type
           when :name  then selector.is_a?(Regexp) ? value =~ selector : value == selector
           when :path  then selector.is_a?(Regexp) ? value =~ selector : value == selector
@@ -85,7 +106,6 @@ module GitHooks
           when :score then selector == value
         end
       end
-      # rubocop:enable CyclomaticComplexity
 
       def fd
         case type

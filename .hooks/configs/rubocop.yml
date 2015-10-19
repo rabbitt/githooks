@@ -94,3 +94,6 @@ Style/FileName:
 
 Style/ParallelAssignment:
   Enabled: false
+
+Style/CommandLiteral:
+  Enabled: false

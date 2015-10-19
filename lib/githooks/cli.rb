@@ -75,8 +75,9 @@ module GitHooks
       #       the argument list to the script
 
       desc :execute, 'Runs the selected hooks, passing the argument list to the script'
-      method_option :staged, aliases: '-S', type: :boolean, desc: 'test staged files', default: nil
-      method_option :tracked, aliases: '-A', type: :boolean, desc: 'test all tracked files', default: false
+      method_option :staged, aliases: '-S', type: :boolean, desc: 'test staged files (disabled if unstaged, tracked or untracked set)', default: true
+      method_option :unstaged, aliases: '-U', type: :boolean, desc: 'test unstaged files', default: false
+      method_option :tracked, aliases: '-A', type: :boolean, desc: 'test tracked files', default: false
       method_option :untracked, aliases: '-T', type: :boolean, desc: 'test untracked files', default: false
       method_option :script, aliases: '-s', type: :string, desc: 'Path to script to run', default: nil
       method_option :'hooks-path', aliases: '-p', type: :string, desc: 'Path to library of tests', default: nil
@@ -84,26 +85,21 @@ module GitHooks
       method_option :'skip-pre', type: :boolean, desc: 'Skip PreRun Scripts', default: false
       method_option :'skip-post', type: :boolean, desc: 'Skip PostRun Scripts', default: false
       method_option :'skip-bundler', type: :boolean, desc: %q"Don't load bundler gemfile", default: false
-      method_option :'hook', type: :string, enum: Hook::VALID_PHASES, desc: 'Hook to run', default: 'pre-commit'
+      method_option :hook, type: :string, enum: Hook::VALID_PHASES, desc: 'Hook to run', default: 'pre-commit'
       method_option :args, type: :array, desc: 'Args to pass to pre/post scripts and main testing script', default: []
-      def execute
+      def execute(hooks = [])
         GitHooks.verbose = options['verbose']
         GitHooks.debug = options['debug']
 
         opts = options.dup
-        opts['staged'] ||= !(opts['tracked'] || opts['untracked'])
 
-        if opts['staged']
-          if opts['tracked']
-            warn '--tracked conflicts with --staged. Dropping --tracked...'
-            opts['tracked'] = false
-          elsif opts['untracked']
-            warn '--untracked conflicts with --staged. Dropping --untracked...'
-            opts['untracked'] = false
-          end
+        if opts['tracked'] || opts['untracked'] || opts['unstaged']
+          opts['staged'] = false
         end
 
         opts['skip-bundler'] ||= !!ENV['GITHOOKS_SKIP_BUNDLER']
+
+        opts['hook'] = hooks unless hooks.empty?
 
         Runner.new(opts).run
       end

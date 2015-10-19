@@ -102,6 +102,9 @@ module GitHooks
 
     ## DSL
 
+    # FIXME: these should be switched to behaviors that are included
+    # into this classs
+
     def config_path
       GitHooks.hooks_root.join('configs')
     end

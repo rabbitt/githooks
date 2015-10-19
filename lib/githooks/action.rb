@@ -133,6 +133,9 @@ module GitHooks
 
     # DSL Methods
 
+    # FIXME: these should be switched to behaviors that are included
+    # into this classs
+
     def skip!
       throw :skip, true
     end

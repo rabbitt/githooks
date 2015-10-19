@@ -16,9 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-=begin
-  Mostly borrowed from Rails' ActiveSupport::Inflections
-=end
+# Mostly borrowed from Rails' ActiveSupport::Inflections
 
 class String
   def constantize
@@ -38,7 +36,7 @@ class String
 
   def camelize!
     tap do
-      gsub!('-', '_')
+      tr!('-', '_')
       sub!(/^[a-z\d]*/, &:capitalize)
       gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{$1}#{$2.capitalize}" }
       gsub!('/', '::')
@@ -79,7 +77,7 @@ class String
   def dasherize!
     tap do
       underscore!
-      gsub!(/_/, '-')
+      tr!('_', '-')
     end
   end
 end

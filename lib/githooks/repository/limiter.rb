@@ -21,23 +21,29 @@ module GitHooks
     class Limiter
       attr_reader :type, :only
 
-      def initialize(type, options = {})
+      def initialize(type)
         @type     = type
-        @only     = options.delete(:only) || options.delete(:to)
+        @only     = nil
         @inverted = false
       end
 
       def only(*args)
         return @only if args.empty?
+        file, line = caller.first.split(':')[0..1]
         @only = args.flatten
+        @only.each do |selector|
+          if selector.respond_to?(:call) && selector.arity == 0
+            fail Error::InvalidLimiterCallable, "Bad #{@type} limiter at #{file}:#{line}; " \
+                                                'expected callable to recieve at least one parameter but receives none.'
+          end
+        end
         self
       end
       alias_method :to, :only
 
-      def inverted
-        @inverted = true
+      def except(*args)
+        only(*args).tap { invert! }
       end
-      alias_method :invert, :inverted
 
       def limit(files)
         files.select! do |file|
@@ -51,6 +57,10 @@ module GitHooks
       end
 
     private
+
+      def invert!
+        @inverted = true
+      end
 
       def match_file(file, match_value)
         if @inverted

@@ -18,5 +18,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 =end
 
 module GitHooks
-  VERSION = '1.5.5' unless defined? VERSION
+  VERSION = '1.6.0' unless defined? VERSION
 end

@@ -39,7 +39,7 @@ begin
     spec.extra_rdoc_files = ['README.md', 'LICENSE.txt']
 
     spec.add_dependency 'rainbow', '~> 2.0.0'
-    spec.add_dependency 'thor', '~> 0.18'
+    spec.add_dependency 'thor', '~> 0.19.1'
 
     spec.add_development_dependency 'rake', '~> 10.1'
     spec.add_development_dependency 'bundler', '~> 1.3'

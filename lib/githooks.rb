@@ -35,6 +35,14 @@ module GitHooks
   class << self
     attr_reader :debug, :verbose, :ignore_script, :hooks_root
 
+    def quieted
+      od, ov = @debug, @verbose
+      @debug, @verbose = false, false
+      yield
+    ensure
+      @debug, @verbose = od, ov
+    end
+
     def debug?
       return true if ENV['GITHOOKS_DEBUG']
       return true if ARGV.include?('--debug')

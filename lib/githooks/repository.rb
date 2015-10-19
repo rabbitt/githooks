@@ -119,25 +119,53 @@ module GitHooks
     end
 
     def unpushed_commits
-      result = git('log', '--format=%H', '@{upstream}..')
-      if result.failure?
-        if result.error =~ /no upstream configured for branch (["'])((?:(?!\1).)+)\1\z/i
-          fail Error::RemoteNotSet, "No upstream remote configured for '#{$2}'"
-        else
-          fail Error::CommandExecutionFailure, result.error
-        end
+      unless remote_branch
+        fail Error::RemoteNotSet, "No upstream remote configured for branch '#{current_branch}'"
       end
-      result.output.split(/\s*\n\s*/).collect(&:strip)
+
+      git('log', '--format=%H', '@{upstream}..') do |result|
+        fail(Error::CommandExecutionFailure, result.error) if result.failure?
+      end.output.split(/\s*\n\s*/).collect(&:strip)
     end
 
-    def revision_parent(revision)
-      return unless (result = git('rev-parse', "#{revision}~1")).status.success?
+    def revision_sha(revision)
+      return unless (result = git('rev-parse', revision)).status.success?
       result.output.strip
     end
 
-    def last_unpushed_commit_parent
-      oldest_sha = unpushed_commits.last
-      revision_parent(oldest_sha) unless oldest_sha.nil?
+    def current_branch
+      @branch ||= begin
+        branch = git('symbolic-ref', '--short', '--quiet', 'HEAD').output.strip
+        if branch.empty?
+          hash = git('rev-parse', 'HEAD').output.strip
+          branch = git('name-rev', '--name-only', hash).output.strip
+        end
+        branch
+      end
+    end
+
+    def remote_branch
+      result = git('rev-parse', '--symbolic-full-name', '--abbrev-ref', "#{current_branch}@{u}")
+      result.success? ? result.output.strip.split('/').last : nil
+    end
+
+    def branch_point_sha
+      # Try to backtrack back to where we branched from, and use that as our
+      # sha to compare against.
+
+      # HACK: there's a better way but, it's too late and I'm too tired to
+      # think of it right now.
+      refs = 0.upto(100).to_a.collect { |x| "#{current_branch}~#{x}" }
+      previous_branch = git('name-rev', '--name-only', *refs).
+                        output_lines.find { |x| x.strip != current_branch }
+      revision_sha(previous_branch) if previous_branch != current_branch
+    end
+
+    def last_unpushed_commit_parent_sha
+      last_unpushed_sha = unpushed_commits.last
+      revision_sha("#{last_unpushed_sha}~1") unless last_unpushed_sha.nil?
+    rescue Error::RemoteNotSet
+      nil
     end
 
   private

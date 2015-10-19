@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    rabbitt-githooks (1.5.5)
+    rabbitt-githooks (1.6.0)
       rainbow (~> 2.0.0)
-      thor (~> 0.18)
+      thor (~> 0.19.1)
 
 GEM
   remote: http://rubygems.org/
@@ -60,3 +60,6 @@ DEPENDENCIES
   ruby-lint (~> 2.0)
   simplecov (~> 0.9)
   yard (~> 0.7)
+
+BUNDLED WITH
+   1.10.6

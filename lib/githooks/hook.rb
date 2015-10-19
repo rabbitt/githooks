@@ -117,6 +117,9 @@ module GitHooks
 
     # DSL methods
 
+    # FIXME: these should be switched to behaviors that are included
+    # into this classs
+
     def config_path
       GitHooks.hooks_root.join('configs')
     end
@@ -173,7 +176,7 @@ module GitHooks
         @hook.repository
       end
 
-      def files # rubocop:disable Metrics/AbcSize
+      def files # rubocop:disable AbcSize,MethodLength
         @files ||= begin
           options = {
             staged:    hook.staged,
@@ -183,10 +186,12 @@ module GitHooks
 
           if %w[ commit-msg pre-push ].include? hook.phase
             begin
-              if (parent_sha = repository.last_unpushed_commit_parent)
-                options.merge!(ref: parent_sha)
-              end
+              parent_sha = repository.last_unpushed_commit_parent_sha || \
+                           repository.branch_point_sha
+              options.merge!(ref: parent_sha) if parent_sha
             rescue Error::RemoteNotSet
+              STDERR.puts 'Couldn\'t find starting reference point for push ' \
+                          'manifest generation. Falling back to all tracked files.'
               # remote not set yet, so let's only focus on what's tracked for now
               options[:tracked]   = true
               options[:untracked] = false
