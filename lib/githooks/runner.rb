@@ -99,10 +99,10 @@ module GitHooks
       gitrunner ||= (GitHooks::BIN_PATH + 'githooks-runner').realpath
 
       # When repos are cloned, sometimes the hooks directory isn't created
-      FileUtils.mkdir(@repository.hooks) unless File.directory?(@repository.hooks)
+      repository.hooks.mkdir unless repository.hooks.directory?
 
       hook_phases.each do |hook|
-        hook = (@repository.hooks + hook).to_s
+        hook = (repository.hooks + hook).to_s
         puts "Linking #{gitrunner} -> #{hook}" if GitHooks.verbose
         FileUtils.ln_sf gitrunner.to_s, hook
       end
