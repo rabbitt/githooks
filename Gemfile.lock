@@ -62,10 +62,10 @@ DEPENDENCIES
   rabbitt-githooks!
   rake (~> 10.1)
   rspec (~> 2.14)
-  rubocop (~> 0.18)
+  rubocop (~> 0.58.2)
   ruby-lint (~> 2.0)
   simplecov (~> 0.9)
-  yard (~> 0.7)
+  yard (~> 0.9.15)
 
 BUNDLED WITH
    1.16.1

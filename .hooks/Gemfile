@@ -18,10 +18,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 source "http://rubygems.org"
 
-gem 'rubocop', '~> 0.18'
+gem 'rubocop', '~> 0.58.2'
 gem 'ruby-lint', '~> 2.0'
 gem 'rabbitt-githooks', '~> 1.6.0'
 
-if RUBY_ENGINE == 'ruby'
-  gem 'parser', "~> #{RUBY_VERSION}.0"
-end
