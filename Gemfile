@@ -19,7 +19,3 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 source "http://rubygems.org"
 
 gemspec
-
-if RUBY_ENGINE == 'ruby'
-  gem 'parser', "~> #{RUBY_VERSION}.0"
-end
