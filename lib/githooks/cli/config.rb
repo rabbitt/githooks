@@ -83,7 +83,7 @@ module GitHooks
         return unless githooks
 
         githooks.each do |path, data|
-          key_size, value_size = data.keys.collect(&:size).maximum, data.values.collect(&:size).maximum
+          key_size, value_size = data.keys.collect(&:size).max, data.values.collect(&:size).max
           display_format = "    %-#{key_size}s = %-#{value_size}s\n"
 
           puts "Repository [#{File.basename(path)}]"

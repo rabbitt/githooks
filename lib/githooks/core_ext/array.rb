@@ -16,6 +16,5 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 =end
 
-require_relative 'array/min_max'
 require_relative 'array/select_with_index'
 require_relative 'array/extract_options'
