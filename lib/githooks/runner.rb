@@ -233,7 +233,7 @@ module GitHooks
       end
 
       success        = active_hook.run
-      section_length = active_hook.sections.maximum { |s| s.title.length }
+      section_length = active_hook.sections.map { |s| s.title.length }.max
       sections       = active_hook.sections.select { |section| !section.actions.empty? }
 
       # TODO: refactor to show this in realtime instead of after the hooks have run
